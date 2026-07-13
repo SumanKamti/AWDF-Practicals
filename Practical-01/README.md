@@ -1,49 +1,117 @@
-# Advanced Web Development Framework (AWDF) Practicals
+# Practical 1
 
-## 📖 About
-
-This repository contains all practicals completed for the **Advanced Web Development Framework (AWDF)** laboratory course.
-
-Each practical demonstrates the implementation of React concepts, component-based architecture, props, state management, routing, and other modern web development concepts.
+# Introduction to React and Component Architecture
 
 ---
 
-## 🛠 Technologies Used
+## Aim
 
+To understand the basics of React and build a student portfolio using reusable React components.
+
+---
+
+## Objective
+
+- Create a React application using Vite.
+- Learn component-based architecture.
+- Create reusable components.
+- Pass data using Props.
+- Display a list dynamically using the map() method.
+
+---
+
+## Software Requirements
+
+- Node.js
+- npm
 - React
 - Vite
-- HTML5
-- CSS3
-- JavaScript (ES6+)
+- Visual Studio Code
 - Git
 - GitHub
-- Visual Studio Code
 
 ---
 
-## Repository Structure
+## Components Used
+
+- Header
+- About
+- Skills
+- Footer
+
+---
+
+## Technologies Used
+
+- HTML
+- CSS
+- JavaScript
+- React
+- Vite
+
+---
+
+## Folder Structure
 
 ```
-AWDF-Practicals
+student-portfolio
 │
-├── Practical-01
-├── Practical-02
-├── Practical-03
-├── Practical-04
-├── Practical-05
-└── ...
+├── src
+│   ├── components
+│   │   ├── Header.jsx
+│   │   ├── About.jsx
+│   │   ├── Skills.jsx
+│   │   └── Footer.jsx
+│   │
+│   ├── App.jsx
+│   ├── App.css
+│   └── index.css
+│
+├── package.json
+├── vite.config.js
+└── README.md
 ```
+
+---
+
+## Features
+
+- Student Portfolio
+- Reusable Components
+- Props
+- Dynamic Skills List
+- Responsive UI
+- Modern CSS Design
+
+---
+
+## Output
+
+The application displays a simple portfolio containing:
+
+- Student Name
+- About Me
+- Skills
+- Contact Information
+
+---
+
+## Learning Outcome
+
+After completing this practical, I learned:
+
+- React project creation using Vite.
+- Component-based development.
+- Passing data using Props.
+- Rendering arrays using map().
+- Basic project structure in React.
 
 ---
 
 ## Author
 
-**Name:** Suman Kamti
+Name: Suman Kamti
 
-**Course:** B.Tech AI & ML
+Subject: Advanced Web Development Framework
 
-**College:** CSPIT, CHARUSAT
-
-**Subject:** Advanced Web Development Framework
-
----
+College: CSPIT, CHARUSAT
