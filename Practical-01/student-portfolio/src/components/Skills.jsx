@@ -1,15 +1,17 @@
 function Skills({ skillList }) {
-    return (
-        <section>
-            <h2>Skills</h2>
-            <ul>
-                {skillList.map((skill) => (
-                    <li key={skill}>
-                        {skill}
-                    </li>
-                ))}
-            </ul>
-        </section>
-    );
+  return (
+    <section className="card">
+      <h2>Technical Skills</h2>
+
+      <div className="skills">
+        {skillList.map((skill) => (
+          <span className="skill" key={skill}>
+            {skill}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
 }
+
 export default Skills;

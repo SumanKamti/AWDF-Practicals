@@ -1,13 +1,11 @@
 function Footer() {
-    return (
-        <footer>
-            <p>
-                © 2026 Suman Kamti
-            </p>
-            <p>
-                Email : suman@email.com
-            </p>
-        </footer>
-    );
+  return (
+    <footer className="footer">
+      <p>📧 Email : suman@email.com</p>
+
+      <p>© 2026 Suman Kamti</p>
+    </footer>
+  );
 }
+
 export default Footer;

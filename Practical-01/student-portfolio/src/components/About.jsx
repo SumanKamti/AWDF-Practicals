@@ -1,11 +1,15 @@
 function About() {
-    return (
-        <section>
-            <h2>About Me</h2>
-            <p>
-                I am an Artificial Intelligence and Machine Learning student at CHARUSAT. I enjoy learning web development and building modern applications using React.
-            </p>
-        </section>
-    );
+  return (
+    <section className="card">
+      <h2>👋 About Me</h2>
+
+      <p>
+        I am an Artificial Intelligence and Machine Learning student at
+        CHARUSAT. I enjoy learning React, JavaScript, and modern web
+        development while building practical projects.
+      </p>
+    </section>
+  );
 }
+
 export default About;
