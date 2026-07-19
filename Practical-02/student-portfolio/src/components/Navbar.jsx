@@ -1,20 +1,29 @@
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 
-function Navbar() {
+function Navbar({ darkMode, setDarkMode }) {
   return (
     <nav className="navbar">
 
-      <h2>Portfolio</h2>
+      <div className="logo">
+        My Portfolio
+      </div>
 
-      <div>
+      <div className="nav-links">
 
-        <Link to="/">Home</Link>
+        <NavLink to="/">Home</NavLink>
 
-        <Link to="/projects">Projects</Link>
+        <NavLink to="/projects">Projects</NavLink>
 
-        <Link to="/contact">Contact</Link>
+        <NavLink to="/contact">Contact</NavLink>
 
       </div>
+
+      <button
+        className="theme-btn"
+        onClick={() => setDarkMode(!darkMode)}
+      >
+        {darkMode ? "☀ Light" : "🌙 Dark"}
+      </button>
 
     </nav>
   );
