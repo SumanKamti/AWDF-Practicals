@@ -1,19 +1,32 @@
+import { useState } from "react";
+import { Routes, Route } from "react-router-dom";
+
 import Navbar from "./components/Navbar";
 
-import Home from "./pages/Home";
-import Projects from "./pages/Projects";
-import Contact from "./pages/Contact";
-import NotFound from "./pages/NotFound";
+import Home from "./Pages/Home";
+import Projects from "./Pages/Projects";
+import Contact from "./Pages/Contact";
+import NotFound from "./Pages/NotFound";
 
-import { Routes, Route } from "react-router-dom";
+import "./App.css";
 
 function App() {
 
-  return (
+  const [darkMode, setDarkMode] = useState(false);
 
-    <>
+  return (
+    <div className={darkMode ? "dark" : "light"}>
 
       <Navbar />
+
+      <div className="theme-container">
+        <button
+          className="theme-btn"
+          onClick={() => setDarkMode(!darkMode)}
+        >
+          {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
+        </button>
+      </div>
 
       <Routes>
 
@@ -27,10 +40,8 @@ function App() {
 
       </Routes>
 
-    </>
-
+    </div>
   );
-
 }
 
 export default App;
