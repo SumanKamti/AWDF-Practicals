@@ -2,46 +2,50 @@ import { useState } from "react";
 import { Routes, Route } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 
-import Home from "./Pages/Home";
-import Projects from "./Pages/Projects";
-import Contact from "./Pages/Contact";
-import NotFound from "./Pages/NotFound";
+import Home from "./pages/Home";
+import Projects from "./pages/Projects";
+import Contact from "./pages/Contact";
+import NotFound from "./pages/NotFound";
 
 import "./App.css";
 
 function App() {
 
-  const [darkMode, setDarkMode] = useState(false);
+    const [darkMode, setDarkMode] = useState(false);
 
-  return (
-    <div className={darkMode ? "dark" : "light"}>
+    return (
 
-      <Navbar />
+        <div className={darkMode ? "dark" : "light"}>
 
-      <div className="theme-container">
-        <button
-          className="theme-btn"
-          onClick={() => setDarkMode(!darkMode)}
-        >
-          {darkMode ? "☀️ Light Mode" : "🌙 Dark Mode"}
-        </button>
-      </div>
+            <Navbar
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+            />
 
-      <Routes>
+            <main className="main-content">
 
-        <Route path="/" element={<Home />} />
+                <Routes>
 
-        <Route path="/projects" element={<Projects />} />
+                    <Route path="/" element={<Home />} />
 
-        <Route path="/contact" element={<Contact />} />
+                    <Route path="/projects" element={<Projects />} />
 
-        <Route path="*" element={<NotFound />} />
+                    <Route path="/contact" element={<Contact />} />
 
-      </Routes>
+                    <Route path="*" element={<NotFound />} />
 
-    </div>
-  );
+                </Routes>
+
+            </main>
+
+            <Footer />
+
+        </div>
+
+    );
+
 }
 
 export default App;
