@@ -6,38 +6,44 @@ export default function RepoFinder() {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    const fetchRepos = async () => {
-      setLoading(true);
-      setError('');
-      setRepos([]);
+  const filteredRepos = repos.filter((repo) =>
+    repo.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-      try {
-        const response = await fetch(
-          `https://api.github.com/users/${GITHUB_USERNAME}/repos?per_page=6&sort=updated`, 
-          {
+  const fetchRepos = async () => {
+    setLoading(true);
+    setError('');
+    setRepos([]);
+
+    try {
+      const response = await fetch(
+        `https://api.github.com/users/${GITHUB_USERNAME}/repos?per_page=6&sort=updated`, 
+        {
           headers: {
             Accept: 'application/vnd.github+json',
           },
-        });
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error('GitHub profile not found');
-          }
-          throw new Error('Failed to fetch repositories');
         }
+      );
 
-        const data = await response.json();
-        setRepos(Array.isArray(data) ? data.filter((repo) => !repo.private) : []);
-      } catch (err) {
-        setError(err.message || 'Something went wrong');
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('GitHub profile not found');
+        }
+        throw new Error('Failed to fetch repositories');
       }
-    };
 
+      const data = await response.json();
+      setRepos(Array.isArray(data) ? data.filter((repo) => !repo.private) : []);
+    } catch (err) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchRepos();
   }, []);
 
@@ -68,11 +74,70 @@ export default function RepoFinder() {
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontSize: '15px' }}>
-          Loading repositories...
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '24px',
+                height: '24px',
+                border: '3px solid #e2e8f0',
+                borderTop: '3px solid #2563eb',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+              }}
+            />
+            <span>Loading repositories...</span>
+          </div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
-      {error && <p style={{ color: '#dc2626', textAlign: 'center', fontWeight: '600' }}>Error: {error}</p>}
+      {error && !loading && (
+        <div style={{ maxWidth: '720px', margin: '0 auto 24px', padding: '22px 20px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '18px', color: '#991b1b', textAlign: 'center' }}>
+          <p style={{ margin: '0 0 10px', fontSize: '18px', fontWeight: '700' }}>❌ Failed to load repositories.</p>
+          <p style={{ margin: '0 0 18px', fontSize: '15px', color: '#7f1d1d' }}>Please try again.</p>
+          <button
+            type="button"
+            onClick={fetchRepos}
+            style={{
+              border: 'none',
+              background: '#2563eb',
+              color: '#fff',
+              padding: '10px 18px',
+              borderRadius: '999px',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: 'pointer',
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {!loading && !error && repos.length === 0 && <p style={{ textAlign: 'center', color: '#64748b' }}>No public repositories found.</p>}
+
+      {!loading && !error && repos.length > 0 && (
+        <div style={{ maxWidth: '720px', margin: '0 auto 24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <label htmlFor="repo-search" style={{ fontSize: '14px', fontWeight: '700', color: '#334155' }}>
+            Search Repository
+          </label>
+          <input
+            id="repo-search"
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search Repository"
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: '14px',
+              border: '1px solid #cbd5e1',
+              background: '#fff',
+              color: '#0f172a',
+              fontSize: '14px',
+              outline: 'none',
+            }}
+          />
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '22px' }}>
         {repos.map((repo) => (
