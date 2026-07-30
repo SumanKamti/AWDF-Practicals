@@ -99,6 +99,7 @@ app.delete("/tasks/:id", validateTaskId, (req, res) => {
   }
 
   tasks.splice(index, 1);
+  taskEditState.delete(req.taskId);
   res.status(200).json({ message: "Task deleted" });
 });
 
