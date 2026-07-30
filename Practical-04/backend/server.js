@@ -3,6 +3,8 @@ const cors = require("cors");
 
 const app = express();
 const PORT = 5000;
+const EDIT_LIMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+const taskEditState = new Map();
 
 const requestLogger = (req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
@@ -62,12 +64,31 @@ app.put("/tasks/:id", validateTaskId, (req, res) => {
     return res.status(404).json({ error: "Task not found" });
   }
 
+  const currentEditState = taskEditState.get(req.taskId);
+  if (currentEditState && currentEditState.blockedUntil && Date.now() < currentEditState.blockedUntil) {
+    return res.status(403).json({
+      error: `Task editing limit reached. You can edit again after ${new Date(currentEditState.blockedUntil).toISOString()}.`,
+    });
+  }
+
+  if (currentEditState && currentEditState.blockedUntil && Date.now() >= currentEditState.blockedUntil) {
+    taskEditState.delete(req.taskId);
+  }
+
   const title = String(req.body.title || "").trim();
   if (!title) {
     return res.status(400).json({ error: "Task title is required" });
   }
 
   task.title = title;
+
+  const nextEditState = taskEditState.get(req.taskId) || { count: 0 };
+  nextEditState.count += 1;
+  if (nextEditState.count >= 3) {
+    nextEditState.blockedUntil = Date.now() + EDIT_LIMIT_WINDOW_MS;
+  }
+  taskEditState.set(req.taskId, nextEditState);
+
   res.status(200).json(task);
 });
 
