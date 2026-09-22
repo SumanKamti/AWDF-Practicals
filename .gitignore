@@ -3,6 +3,8 @@
 .env.local
 .env.*.local
 *.env
+backend/.env
+student-portfolio/.env
 
 # Dependencies
 node_modules/
