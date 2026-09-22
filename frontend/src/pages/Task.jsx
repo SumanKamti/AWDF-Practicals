@@ -254,37 +254,39 @@ function Task() {
             Select a timeline date range to download only the tasks created within that period:
           </p>
 
-          <div style="margin-bottom: 12px;">
-            <label style="display: block; font-weight: 600; margin-bottom: 4px; color: #0f172a;">From Date (Start):</label>
-            <input
-              type="date"
-              id="pdf-start-date"
-              value="${defaultStartDate}"
-              style="width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;"
-            />
-          </div>
+          <div class="pdf-modal-container">
+            <div class="pdf-modal-field">
+              <label class="pdf-modal-label">From Date (Start):</label>
+              <input
+                type="date"
+                id="pdf-start-date"
+                class="pdf-modal-input"
+                value="${defaultStartDate}"
+              />
+            </div>
 
-          <div style="margin-bottom: 14px;">
-            <label style="display: block; font-weight: 600; margin-bottom: 4px; color: #0f172a;">To Date (End):</label>
-            <input
-              type="date"
-              id="pdf-end-date"
-              value="${today}"
-              style="width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;"
-            />
-          </div>
+            <div class="pdf-modal-field">
+              <label class="pdf-modal-label">To Date (End):</label>
+              <input
+                type="date"
+                id="pdf-end-date"
+                class="pdf-modal-input"
+                value="${today}"
+              />
+            </div>
 
-          <div style="margin-bottom: 8px;">
-            <label style="display: block; font-weight: 600; margin-bottom: 4px; color: #0f172a;">Status Filter:</label>
-            <select
-              id="pdf-status-filter"
-              style="width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px;"
-            >
-              <option value="all" ${activeTab === "all" ? "selected" : ""}>All Statuses</option>
-              <option value="incomplete" ${activeTab === "incomplete" ? "selected" : ""}>Incomplete Only</option>
-              <option value="ongoing" ${activeTab === "ongoing" ? "selected" : ""}>Ongoing Only</option>
-              <option value="complete" ${activeTab === "complete" ? "selected" : ""}>Complete Only</option>
-            </select>
+            <div class="pdf-modal-field">
+              <label class="pdf-modal-label">Status Filter:</label>
+              <select
+                id="pdf-status-filter"
+                class="pdf-modal-select"
+              >
+                <option value="all" ${activeTab === "all" ? "selected" : ""}>All Statuses</option>
+                <option value="incomplete" ${activeTab === "incomplete" ? "selected" : ""}>Incomplete Only</option>
+                <option value="ongoing" ${activeTab === "ongoing" ? "selected" : ""}>Ongoing Only</option>
+                <option value="complete" ${activeTab === "complete" ? "selected" : ""}>Complete Only</option>
+              </select>
+            </div>
           </div>
         </div>
       `,

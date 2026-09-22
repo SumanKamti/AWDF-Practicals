@@ -24,8 +24,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem("portfolio_theme", darkMode ? "dark" : "light");
     if (darkMode) {
+      document.documentElement.classList.add("dark");
       document.body.classList.add("dark-body");
     } else {
+      document.documentElement.classList.remove("dark");
       document.body.classList.remove("dark-body");
     }
   }, [darkMode]);
