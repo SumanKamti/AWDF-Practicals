@@ -188,7 +188,7 @@ function AuthModal() {
               <li>Create an <b>OAuth 2.0 Client ID</b> (Application type: <b>Web application</b>).</li>
               <li>Add <code>http://localhost:5173</code> to <b>Authorized JavaScript origins</b>.</li>
               <li>Copy the Client ID and add it into:
-                <br/><code>student-portfolio/.env</code>: <code>VITE_GOOGLE_CLIENT_ID=your_id_here</code>
+                <br/><code>frontend/.env</code>: <code>VITE_GOOGLE_CLIENT_ID=your_id_here</code>
                 <br/><code>backend/.env</code>: <code>GOOGLE_CLIENT_ID=your_id_here</code>
               </li>
               <li>Restart both servers.</li>

@@ -27,14 +27,14 @@ The table below illustrates how each practical syllabus requirement is implement
 
 | Practical | Title & Focus | Key Concepts Implemented | Core Project Files |
 |---|---|---|---|
-| **Practical 1** | **Introduction to React & Component Architecture** | Vite tooling, Component hierarchy, Props passing, Rendering dynamic lists with `.map()`. | `student-portfolio/src/components/Header.jsx`<br>`student-portfolio/src/components/About.jsx`<br>`student-portfolio/src/components/Skills.jsx`<br>`student-portfolio/src/components/Footer.jsx` |
-| **Practical 2** | **React Routing & State Management** | Client-side routing with `react-router-dom`, Multi-page layout, Active link styling, `useState` hook for dynamic interaction, Global Dark/Light mode theme toggle, Controlled forms. | `student-portfolio/src/App.jsx`<br>`student-portfolio/src/components/Navbar.jsx`<br>`student-portfolio/src/pages/Home.jsx`<br>`student-portfolio/src/pages/Projects.jsx`<br>`student-portfolio/src/pages/Contact.jsx`<br>`student-portfolio/src/pages/NotFound.jsx` |
-| **Practical 3** | **REST API Integration & Dynamic State** | Third-party REST API consumption (GitHub Repositories API), Asynchronous data fetching with `useEffect` and `fetch()`, Loading states, Error handling, Search and language filtering. | `student-portfolio/src/pages/Projects.jsx` |
-| **Practical 4** | **Full-Stack Task Manager & Express Middleware** | Express.js REST API, CRUD endpoints (`GET`, `POST`, `PUT`, `DELETE` `/tasks`), Middleware pipeline (CORS, Request logger, JSON validator, Content-Type check), Centralized error handling, HTTP status codes. | `backend/server.js`<br>`student-portfolio/src/pages/Task.jsx`<br>`student-portfolio/src/components/Todo.jsx` |
-| **Practical 5** | **Persistent Storage with MongoDB & Mongoose** | Dual-mode database connectivity (Local MongoDB `127.0.0.1:27017` and MongoDB Atlas Cloud), Mongoose schema design with timestamps and validation, Environment variable security (`.env`). | `backend/db.js`<br>`backend/cloud-db.js`<br>`backend/.env.example`<br>`student-portfolio/.env.example` |
-| **Practical 6** | **Full-Stack Integration, Audit Logs & PDF Export** | End-to-end integration via centralized API client (`api.js`), Status filter tabs with dynamic task counts, Real-time status toggle, Activity audit trail in MongoDB Atlas, PDF report export, SweetAlert2 modals, Font Awesome icons. | `student-portfolio/src/services/api.js`<br>`student-portfolio/src/components/ActivityLogs.jsx`<br>`student-portfolio/src/utils/pdfExport.js`<br>`backend/server.js` |
-| **Practical 7** | **Authentication & Middleware Security Pipeline** | User registration and login, `bcryptjs` password hashing (10 salt rounds), JWT token signing and verification, `authMiddleware` for protected endpoints, Input validation middleware, React `AuthContext` for session persistence. | `backend/server.js`<br>`backend/db.js`<br>`student-portfolio/src/context/AuthContext.jsx`<br>`student-portfolio/src/components/AuthModal.jsx` |
-| **Practical 8** | **Advanced Security, OAuth, Nodemailer OTP & Task Lock** | Strict User Data Isolation (per-user tasks and activity logs), Google OAuth Sign-In via Google Identity Services (`gsi/client`), Nodemailer OTP email verification and welcome emails, Task locking mechanism to prevent accidental edits, Date-range filtered PDF report generation. | `backend/server.js`<br>`backend/mailer.js`<br>`backend/db.js`<br>`student-portfolio/src/context/AuthContext.jsx`<br>`student-portfolio/src/components/AuthModal.jsx`<br>`student-portfolio/src/pages/Task.jsx` |
+| **Practical 1** | **Introduction to React & Component Architecture** | Vite tooling, Component hierarchy, Props passing, Rendering dynamic lists with `.map()`. | `frontend/src/components/Header.jsx`<br>`frontend/src/components/About.jsx`<br>`frontend/src/components/Skills.jsx`<br>`frontend/src/components/Footer.jsx` |
+| **Practical 2** | **React Routing & State Management** | Client-side routing with `react-router-dom`, Multi-page layout, Active link styling, `useState` hook for dynamic interaction, Global Dark/Light mode theme toggle, Controlled forms. | `frontend/src/App.jsx`<br>`frontend/src/components/Navbar.jsx`<br>`frontend/src/pages/Home.jsx`<br>`frontend/src/pages/Projects.jsx`<br>`frontend/src/pages/Contact.jsx`<br>`frontend/src/pages/NotFound.jsx` |
+| **Practical 3** | **REST API Integration & Dynamic State** | Third-party REST API consumption (GitHub Repositories API), Asynchronous data fetching with `useEffect` and `fetch()`, Loading states, Error handling, Search and language filtering. | `frontend/src/pages/Projects.jsx` |
+| **Practical 4** | **Full-Stack Task Manager & Express Middleware** | Express.js REST API, CRUD endpoints (`GET`, `POST`, `PUT`, `DELETE` `/tasks`), Middleware pipeline (CORS, Request logger, JSON validator, Content-Type check), Centralized error handling, HTTP status codes. | `backend/server.js`<br>`frontend/src/pages/Task.jsx`<br>`frontend/src/components/Todo.jsx` |
+| **Practical 5** | **Persistent Storage with MongoDB & Mongoose** | Dual-mode database connectivity (Local MongoDB `127.0.0.1:27017` and MongoDB Atlas Cloud), Mongoose schema design with timestamps and validation, Environment variable security (`.env`). | `backend/db.js`<br>`backend/cloud-db.js`<br>`backend/.env.example`<br>`frontend/.env.example` |
+| **Practical 6** | **Full-Stack Integration, Audit Logs & PDF Export** | End-to-end integration via centralized API client (`api.js`), Status filter tabs with dynamic task counts, Real-time status toggle, Activity audit trail in MongoDB Atlas, PDF report export, SweetAlert2 modals, Font Awesome icons. | `frontend/src/services/api.js`<br>`frontend/src/components/ActivityLogs.jsx`<br>`frontend/src/utils/pdfExport.js`<br>`backend/server.js` |
+| **Practical 7** | **Authentication & Middleware Security Pipeline** | User registration and login, `bcryptjs` password hashing (10 salt rounds), JWT token signing and verification, `authMiddleware` for protected endpoints, Input validation middleware, React `AuthContext` for session persistence. | `backend/server.js`<br>`backend/db.js`<br>`frontend/src/context/AuthContext.jsx`<br>`frontend/src/components/AuthModal.jsx` |
+| **Practical 8** | **Advanced Security, OAuth, Nodemailer OTP & Task Lock** | Strict User Data Isolation (per-user tasks and activity logs), Google OAuth Sign-In via Google Identity Services (`gsi/client`), Nodemailer OTP email verification and welcome emails, Task locking mechanism to prevent accidental edits, Date-range filtered PDF report generation. | `backend/server.js`<br>`backend/mailer.js`<br>`backend/db.js`<br>`frontend/src/context/AuthContext.jsx`<br>`frontend/src/components/AuthModal.jsx`<br>`frontend/src/pages/Task.jsx` |
 
 ---
 
@@ -102,7 +102,7 @@ AWDF-Practicals/
 │   ├── package-lock.json
 │   └── server.js                   # Express server, middleware pipeline, authentication & task routes
 │
-└── student-portfolio/              # React (Vite) Single Page Application
+└── frontend/                       # React (Vite) Single Page Application
     ├── .env                        # Frontend environment variables (git-ignored)
     ├── .env.example                # Frontend environment template
     ├── .gitignore                  # Frontend ignore rules
@@ -240,9 +240,9 @@ cd AWDF-Practicals
 
 ### Step 3: Configure and Start the React Frontend
 
-1. Open a **second terminal window** and navigate to `student-portfolio`:
+1. Open a **second terminal window** and navigate to `frontend`:
    ```bash
-   cd student-portfolio
+   cd frontend
    ```
 
 2. Install frontend dependencies:
