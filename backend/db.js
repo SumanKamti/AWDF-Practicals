@@ -103,10 +103,13 @@ async function connectDB() {
   } else {
     // Force Node.js to use Google DNS for SRV queries (prevents querySrv ECONNREFUSED)
     dns.setServers(["8.8.8.8", "8.8.4.4"]);
-    const cloudURI =
-      process.env.CLOUD_DB_URI ||
-      process.env.MONGODB_URI ||
-      "mongodb+srv://my-portfolio:suman1portfolio@cluster0.g3jxa6m.mongodb.net/PracticeDB?retryWrites=true&w=majority";
+    const cloudURI = process.env.CLOUD_DB_URI || process.env.MONGODB_URI;
+
+    if (!cloudURI) {
+      console.warn("⚠️ Warning: CLOUD_DB_URI / MONGODB_URI is not set in backend/.env!");
+      console.warn("💡 Tip: Provide your MongoDB Atlas connection string in backend/.env");
+      return;
+    }
 
     try {
       await mongoose.connect(cloudURI);
