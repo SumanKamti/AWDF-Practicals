@@ -6,6 +6,16 @@ const jwt = require("jsonwebtoken");
 const PDFDocument = require("pdfkit");
 const { User, Task, ActivityLog } = require("./db");
 const { sendWelcomeEmail, sendOtpEmail, sendContactFormEmails } = require("./mailer");
+const {
+  cache,
+  recordHit,
+  recordMiss,
+  recordSet,
+  getTaskListCacheKey,
+  getTaskItemCacheKey,
+  invalidateUserTaskCache,
+  getCacheMetrics,
+} = require("./cache");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -662,19 +672,78 @@ app.get(["/tasks/export-pdf", "/api/tasks/export-pdf"], authMiddleware, async (r
   }
 });
 
-// GET /tasks - Fetch tasks (strictly user-scoped)
+// GET /tasks/cache-stats - Debug endpoint displaying cache hit/miss metrics (Safe, No secrets)
+app.get(["/tasks/cache-stats", "/api/tasks/cache-stats"], (req, res) => {
+  res.status(200).json({
+    status: "success",
+    timestamp: new Date().toISOString(),
+    metrics: getCacheMetrics(),
+  });
+});
+
+// GET /tasks - Fetch tasks (strictly user-scoped with In-Memory Caching)
 app.get(["/tasks", "/api/tasks"], authMiddleware, async (req, res, next) => {
   try {
     const userId = req.user.id;
+    const cacheKey = getTaskListCacheKey(userId);
+
+    // Check in-memory cache
+    const cachedTasks = cache.get(cacheKey);
+    if (cachedTasks !== undefined) {
+      recordHit();
+      res.setHeader("X-Cache", "HIT");
+      return res.status(200).json(cachedTasks);
+    }
+
+    // Cache miss: query database
+    recordMiss();
     const tasks = await Task.find({ userId }, { _id: 0, __v: 0 }).sort({ id: 1 });
 
+    // Store in cache with default TTL (60s)
+    cache.set(cacheKey, tasks);
+    recordSet();
+
+    res.setHeader("X-Cache", "MISS");
     res.status(200).json(tasks);
   } catch (error) {
     next(error);
   }
 });
 
-// POST /tasks - Create a new task (Protected + Input Validated)
+// GET /tasks/:id - Fetch single task by ID (strictly user-scoped with In-Memory Caching)
+app.get(["/tasks/:id", "/api/tasks/:id"], authMiddleware, validateTaskId, async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const taskId = req.taskId;
+    const cacheKey = getTaskItemCacheKey(userId, taskId);
+
+    // Check in-memory cache
+    const cachedTask = cache.get(cacheKey);
+    if (cachedTask !== undefined) {
+      recordHit();
+      res.setHeader("X-Cache", "HIT");
+      return res.status(200).json(cachedTask);
+    }
+
+    // Cache miss: query database
+    recordMiss();
+    const task = await Task.findOne({ id: taskId, userId }, { _id: 0, __v: 0 });
+    if (!task) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    // Store in cache
+    cache.set(cacheKey, task);
+    recordSet();
+
+    res.setHeader("X-Cache", "MISS");
+    res.status(200).json(task);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /tasks - Create a new task (Protected + Input Validated + Cache Invalidated)
 app.post(["/tasks", "/api/tasks"], authMiddleware, validateTaskInput, async (req, res, next) => {
   try {
     const { title, status } = req.taskInput;
@@ -695,6 +764,9 @@ app.post(["/tasks", "/api/tasks"], authMiddleware, validateTaskInput, async (req
 
     await newTask.save();
 
+    // Invalidate user's task cache after successful creation
+    invalidateUserTaskCache(userId);
+
     await logActivity(
       "CREATE",
       `Created task #${nextId}: "${newTask.title}" (Status: ${status})`,
@@ -714,7 +786,7 @@ app.post(["/tasks", "/api/tasks"], authMiddleware, validateTaskInput, async (req
   }
 });
 
-// PUT /tasks/:id - Update task title/status (Protected + Task ID Validated)
+// PUT /tasks/:id - Update task title/status (Protected + Task ID Validated + Cache Invalidated)
 app.put(["/tasks/:id", "/api/tasks/:id"], authMiddleware, validateTaskId, async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -755,6 +827,9 @@ app.put(["/tasks/:id", "/api/tasks/:id"], authMiddleware, validateTaskId, async 
     task.updatedAt = new Date();
     await task.save();
 
+    // Invalidate user's task-list cache and this task's specific item cache
+    invalidateUserTaskCache(userId, req.taskId);
+
     const changeDescription = changes.length > 0 ? changes.join(", ") : "details saved";
     await logActivity("UPDATE", `Updated task #${task.id} (${changeDescription})`, userName, userId);
 
@@ -770,7 +845,7 @@ app.put(["/tasks/:id", "/api/tasks/:id"], authMiddleware, validateTaskId, async 
   }
 });
 
-// DELETE /tasks/:id - Delete a task (Protected + Task ID Validated)
+// DELETE /tasks/:id - Delete a task (Protected + Task ID Validated + Cache Invalidated)
 app.delete(["/tasks/:id", "/api/tasks/:id"], authMiddleware, validateTaskId, async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -782,6 +857,10 @@ app.delete(["/tasks/:id", "/api/tasks/:id"], authMiddleware, validateTaskId, asy
     const userName = req.user.name || req.user.email;
 
     await Task.deleteOne({ _id: task._id });
+
+    // Invalidate user's task-list cache and this task's specific item cache
+    invalidateUserTaskCache(userId, req.taskId);
+
     await logActivity("DELETE", `Deleted task #${task.id}: "${task.title}"`, userName, userId);
 
     res.status(200).json({ message: "Task deleted successfully", id: req.taskId });

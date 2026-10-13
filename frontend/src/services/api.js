@@ -242,6 +242,29 @@ export async function sendContactMessage({ name, email, message }) {
   return handleResponse(response);
 }
 
+/**
+ * GET /tasks/:id - Fetch a single task by ID (Protected)
+ * @param {number|string} id
+ */
+export async function getTaskById(id) {
+  const response = await fetch(`${BASE_URL}/tasks/${id}`, {
+    headers: getAuthHeaders(),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * GET /tasks/cache-stats - Fetch in-memory cache hit/miss statistics (Practical 9)
+ */
+export async function getCacheStats() {
+  const response = await fetch(`${BASE_URL}/tasks/cache-stats`, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+  return handleResponse(response);
+}
+
 // Export default object for flexible import syntax
 const api = {
   BASE_URL,
@@ -256,12 +279,14 @@ const api = {
   resetPassword,
   getCurrentUser,
   getTasks,
+  getTaskById,
   createTask,
   updateTask,
   deleteTask,
   getLogs,
   getExportPdfUrl,
   sendContactMessage,
+  getCacheStats,
 };
 
 export default api;

@@ -35,6 +35,7 @@ The table below illustrates how each practical syllabus requirement is implement
 | **Practical 6** | **Full-Stack Integration, Audit Logs & PDF Export** | End-to-end integration via centralized API client (`api.js`), Status filter tabs with dynamic task counts, Real-time status toggle, Activity audit trail in MongoDB Atlas, PDF report export, SweetAlert2 modals, Font Awesome icons. | `frontend/src/services/api.js`<br>`frontend/src/components/ActivityLogs.jsx`<br>`frontend/src/utils/pdfExport.js`<br>`backend/server.js` |
 | **Practical 7** | **Authentication & Security Pipeline** | User registration and login, `bcryptjs` password hashing, JWT token signing and verification, `authMiddleware`, React `AuthContext` session persistence. *(Includes Bonus / Practical 7 Extension: Google OAuth GIS, Nodemailer OTP verification, per-user task sandboxing & task locking in `backend/mailer.js`).* | `backend/server.js`<br>`backend/db.js`<br>`backend/mailer.js`<br>`frontend/src/context/AuthContext.jsx`<br>`frontend/src/components/AuthModal.jsx` |
 | **Practical 8** | **Performance Optimization & Lazy Loading** | Route-based code splitting via `React.lazy()` and dynamic `import()` for Projects and Contact, Accessible luxury `<LoadingFallback />` Suspense indicator, Component-level lazy loading for heavy `ActivityLogs` audit panel, `React.memo` profiling to eliminate redundant re-renders, and bundle size reduction. | `frontend/src/App.jsx`<br>`frontend/src/components/LoadingFallback.jsx`<br>`frontend/src/components/LoadingFallback.css`<br>`frontend/src/pages/Task.jsx`<br>`frontend/src/components/Footer.jsx`<br>`docs/performance/` |
+| **Practical 9** | **In-Memory Caching & Query Optimization** | Backend in-memory caching using `node-cache` (60s TTL), user-scoped cache keys (`tasks:user:<userId>:list`, `tasks:user:<userId>:item:<id>`), cache hit/miss resolution, automatic cache invalidation on write operations (`POST`, `PUT`, `DELETE`), safe metrics endpoint (`/api/tasks/cache-stats`), and single task endpoint (`GET /api/tasks/:id`). | `backend/cache.js`<br>`backend/server.js`<br>`backend/package.json`<br>`frontend/src/services/api.js` |
 
 ---
 
@@ -347,6 +348,21 @@ Optimize the React Single Page Application (SPA) load times and JavaScript bundl
 | **`rolldown-runtime-*.js`**| N/A | **0.56 kB** (gzip: 0.36 kB) | Dynamic chunk loader |
 
 Detailed before/after logs, network test checklists, and Profiler findings are archived in [`docs/performance/comparison.md`](docs/performance/comparison.md).
+
+---
+
+## ⚡ Practical 9: In-Memory Caching & Query Optimization
+
+### Objective
+Enhance database throughput and API response latency by implementing in-memory caching with `node-cache`:
+1. **Shared Cache Module (`backend/cache.js`):** Configured with a default TTL of 60 seconds and automatic garbage collection.
+2. **User-Scoped Cache Keys:** Keys are strictly formatted (`tasks:user:<userId>:list` and `tasks:user:<userId>:item:<id>`) to prevent cross-user data leakage.
+3. **Cache Hit / Miss Logic:**
+   - On **Cache Miss**: Queries MongoDB, sets the cached object with TTL, records a miss, and tags HTTP response header `X-Cache: MISS`.
+   - On **Cache Hit**: Immediately serves data from memory, records a hit, and tags HTTP response header `X-Cache: HIT`.
+4. **Automated Cache Invalidation:** Write operations (`POST /api/tasks`, `PUT /api/tasks/:id`, `DELETE /api/tasks/:id`) proactively purge corresponding user list and item cache keys.
+5. **Single Task Fetch Route (`GET /api/tasks/:id`):** Provides cached lookups for individual tasks by their unique ID.
+6. **Telemetry & Debug Endpoint (`GET /api/tasks/cache-stats`):** Exposes non-sensitive performance counters including `hits`, `misses`, `hitRatio`, `keysSet`, `keysInvalidated`, and `activeKeysCount`.
 
 ---
 
