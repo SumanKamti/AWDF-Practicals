@@ -148,12 +148,12 @@ export default function Projects() {
         <div className="featured-banner-glow" aria-hidden="true" />
         <div className="featured-banner-text">
           <div className="featured-pill-row">
-            <span className="featured-pill">🌟 Practical 8 Milestone</span>
+            <span className="featured-pill">⚡ Practical 8: Performance & Lazy Loading</span>
             <span className="featured-subpill">MERN Architecture</span>
           </div>
-          <h2>Full-Stack Task Manager with JWT & MongoDB Atlas</h2>
+          <h2>Full-Stack Task Manager with Code Splitting & Performance Optimization</h2>
           <p>
-            Dual-mode persistence, Google OAuth 2.0 GIS, strict user-scoped task sandboxing, activity audit logging, and timeline PDF report export.
+            React.lazy route splitting, Suspense loading states, MongoDB Atlas activity audit trail, JWT auth, and timeline PDF report export.
           </p>
         </div>
         <Link to="/task" className="launch-btn">
