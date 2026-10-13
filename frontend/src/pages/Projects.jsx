@@ -77,7 +77,7 @@ export default function Projects() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLang, setSelectedLang] = useState("All");
 
-  const languages = ["All", "React", "JavaScript", "Python", "Node.js", "MongoDB"];
+  const languages = ["All", "React", "JavaScript", "Python", "Node.js", "MongoDB", "Jupyter Notebook"];
 
   const filtered = repos.filter((p) => {
     const matchesSearch =
@@ -98,6 +98,8 @@ export default function Projects() {
     if (l.includes("node")) return "#10b981";
     if (l.includes("mongo")) return "#22c55e";
     if (l.includes("javascript")) return "#eab308";
+    if (l.includes("jupyter") || l.includes("notebook")) return "#f97316";
+    if (l.includes("html")) return "#ea580c";
     return "#8b5cf6";
   };
 

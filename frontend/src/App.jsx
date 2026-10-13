@@ -1,16 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthModal from "./components/AuthModal";
+import LoadingFallback from "./components/LoadingFallback";
 import { AuthProvider } from "./context/AuthContext";
 
 import Home from "./pages/Home";
-import Projects from "./pages/Projects";
-import Contact from "./pages/Contact";
 import Task from "./pages/Task";
 import NotFound from "./pages/NotFound";
+
+// Practical 8: Route-based code splitting with React.lazy
+const Projects = lazy(() => import("./pages/Projects"));
+const Contact = lazy(() => import("./pages/Contact"));
 
 import "./App.css";
 
@@ -38,13 +41,15 @@ function App() {
         <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
 
         <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/task" element={<Task />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<LoadingFallback message="Loading page component..." />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/task" element={<Task />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </main>
 
         <Footer />

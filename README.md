@@ -305,6 +305,51 @@ cd AWDF-Practicals
 
 ---
 
+## ⚡ Practical 8: Performance Optimization & Lazy Loading
+
+### Objective
+Optimize the React Single Page Application (SPA) load times and JavaScript bundle efficiency by implementing:
+1. **Route-based Code Splitting** via `React.lazy()` and dynamic `import()` for `/projects` and `/contact`.
+2. **Accessible Suspense Fallback** with a custom luxury animated spinner and zero layout shifts.
+3. **Component-level Lazy Loading** for the heavy MongoDB Atlas Activity Audit Trail component (`ActivityLogs.jsx`) on the Task page.
+4. **React DevTools Profiler Optimization** using `React.memo` on static elements (`Footer.jsx`) to eliminate unnecessary re-renders.
+
+### Key Implementation Details
+- **Dynamic Imports in App.jsx:**
+  ```jsx
+  import { lazy, Suspense } from "react";
+  const Projects = lazy(() => import("./pages/Projects"));
+  const Contact = lazy(() => import("./pages/Contact"));
+
+  <Suspense fallback={<LoadingFallback message="Loading page component..." />}>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/projects" element={<Projects />} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/task" element={<Task />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </Suspense>
+  ```
+- **Component Lazy Loading in Task.jsx:**
+  ```jsx
+  const ActivityLogs = lazy(() => import("../components/ActivityLogs"));
+  ```
+
+### Build & Code-Splitting Results
+
+| Chunk | Baseline Size (Before) | Optimized Size (After) | Status |
+|---|---|---|---|
+| **Entry Bundle (`index-*.js`)** | 908.98 kB (gzip: 281.35 kB) | **896.99 kB** (gzip: 278.42 kB) | **Reduced by 11.99 kB** |
+| **`Projects-*.js`** | Bundled in main | **6.24 kB** (gzip: 2.46 kB) | On-demand route chunk |
+| **`Contact-*.js`** | Bundled in main | **5.12 kB** (gzip: 1.83 kB) | On-demand route chunk |
+| **`ActivityLogs-*.js`** | Bundled in main | **2.19 kB** (gzip: 0.81 kB) | On-demand component chunk |
+| **`rolldown-runtime-*.js`**| N/A | **0.56 kB** (gzip: 0.36 kB) | Dynamic chunk loader |
+
+Detailed before/after logs, network test checklists, and Profiler findings are archived in [`docs/performance/comparison.md`](docs/performance/comparison.md).
+
+---
+
 ## 👨‍💻 Author
 
 - **Name:** Suman Kamti

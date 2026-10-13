@@ -1,6 +1,7 @@
+import { memo } from "react";
 import { Link } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBolt, faHeart } from "@fortawesome/free-solid-svg-icons";
+import { faBolt } from "@fortawesome/free-solid-svg-icons";
 
 function Footer() {
   return (
@@ -40,4 +41,4 @@ function Footer() {
   );
 }
 
-export default Footer;
+export default memo(Footer);

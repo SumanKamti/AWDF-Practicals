@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import Swal from "sweetalert2";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -12,10 +12,12 @@ import {
   faShieldAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import Todo from "../components/Todo";
-import ActivityLogs from "../components/ActivityLogs";
 import { useAuth } from "../context/AuthContext";
 import { getTasks, createTask, updateTask, deleteTask, getLogs } from "../services/api";
 import { exportTasksToPDF } from "../utils/pdfExport";
+
+// Practical 8: Lazy load heavy audit trail panel component
+const ActivityLogs = lazy(() => import("../components/ActivityLogs"));
 
 function Task() {
   const { user, isAuthenticated, openLoginModal, openRegisterModal } = useAuth();
@@ -440,12 +442,21 @@ function Task() {
           )}
 
           {showLogs && (
-            <ActivityLogs
-              logs={logs}
-              loading={loadingLogs}
-              onRefresh={loadLogsData}
-              onClose={() => setShowLogs(false)}
-            />
+            <Suspense
+              fallback={
+                <div className="audit-loading-box" style={{ padding: "2rem", textAlign: "center" }}>
+                  <FontAwesomeIcon icon={faSpinner} spin />
+                  <span style={{ marginLeft: "0.75rem" }}>Loading Activity Audit Module...</span>
+                </div>
+              }
+            >
+              <ActivityLogs
+                logs={logs}
+                loading={loadingLogs}
+                onRefresh={loadLogsData}
+                onClose={() => setShowLogs(false)}
+              />
+            </Suspense>
           )}
         </>
       )}
