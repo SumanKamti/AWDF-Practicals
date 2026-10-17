@@ -899,8 +899,9 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Practical 10 API Server running on http://localhost:${PORT}`);
+  console.log(`🚀 AWDF API Server running on http://localhost:${PORT}`);
   console.log(`📦 Active Database Mode: [${(process.env.DB_TYPE || "cloud").toUpperCase()}]`);
   console.log(`🔒 JWT Authentication & Middleware Pipeline active`);
   console.log(`⚡ Practical 10: Event-Driven Architecture (EventEmitter) active`);
+  console.log(`🐳 Practical 11: Docker Containerized Environment active`);
 });

@@ -13,15 +13,16 @@
 
 This repository contains the complete laboratory work for the **Advanced Web Development Framework (AWDF)** course at **CSPIT, CHARUSAT**.
 
-The curriculum is designed as a **progressive learning journey** from basic frontend components to an enterprise-grade full-stack web application. All exercises (Practicals 1 through 10) are unified into this production-ready application featuring:
+The curriculum is designed as a **progressive learning journey** from basic frontend components to an enterprise-grade full-stack web application. All exercises (Practicals 1 through 11) are unified into this production-ready application featuring:
 - A responsive, multi-page **React (Vite) Student Portfolio & Task Management Application**.
 - A secure **Express.js REST API Server**.
-- Cloud persistence via **MongoDB Atlas**.
+- Cloud persistence via **MongoDB Atlas** and containerized persistence via **MongoDB 7.0**.
 - Comprehensive security with **JWT authentication, bcrypt password hashing, Google OAuth, and Nodemailer OTP email verification**.
+- Full-stack containerization via **Docker & Docker Compose**.
 
 ---
 
-## 🎓 Progressive Curriculum Mapping (Practicals 1 – 10)
+## 🎓 Progressive Curriculum Mapping (Practicals 1 – 11)
 
 The table below illustrates how each practical syllabus requirement is implemented and integrated into this unified codebase:
 
@@ -37,6 +38,7 @@ The table below illustrates how each practical syllabus requirement is implement
 | **Practical 8** | **Performance Optimization & Lazy Loading** | Route-based code splitting via `React.lazy()` and dynamic `import()` for Projects and Contact, Accessible luxury `<LoadingFallback />` Suspense indicator, Component-level lazy loading for heavy `ActivityLogs` audit panel, `React.memo` profiling to eliminate redundant re-renders, and bundle size reduction. | `frontend/src/App.jsx`<br>`frontend/src/components/LoadingFallback.jsx`<br>`frontend/src/components/LoadingFallback.css`<br>`frontend/src/pages/Task.jsx`<br>`frontend/src/components/Footer.jsx`<br>`docs/performance/` |
 | **Practical 9** | **In-Memory Caching & Query Optimization** | Backend in-memory caching using `node-cache` (60s TTL), user-scoped cache keys (`tasks:user:<userId>:list`, `tasks:user:<userId>:item:<id>`), cache hit/miss resolution, automatic cache invalidation on write operations (`POST`, `PUT`, `DELETE`), safe metrics endpoint (`/api/tasks/cache-stats`), and single task endpoint (`GET /api/tasks/:id`). | `backend/cache.js`<br>`backend/server.js`<br>`backend/package.json`<br>`frontend/src/services/api.js` |
 | **Practical 10** | **Asynchronous Processing with Event-Driven Architecture** | Decoupled background notifications using Node.js built-in `EventEmitter` (`TaskEvents` singleton), dedicated listeners (`task-created`, `task-deleted`, `notification-error`), non-blocking HTTP response initiation with timestamps, and 2-second simulated background delay. | `backend/events.js`<br>`backend/listeners.js`<br>`backend/server.js` |
+| **Practical 11** | **Docker & Docker Compose Containerization** | Multi-stage Docker build for React/Vite with Nginx, production Node.js Dockerfile for Express, 3-tier Compose architecture (frontend, backend, mongodb), bridge network (`app-network`), persistent named volume (`awdf_mongodb_data`), and health-checked container dependencies. | `docker-compose.yml`<br>`frontend/Dockerfile`<br>`frontend/nginx.conf`<br>`backend/Dockerfile`<br>`.env.example` |
 
 ---
 
@@ -380,6 +382,168 @@ Implement decoupled, asynchronous task lifecycle notifications using Node.js's n
    - In `POST /tasks`, the HTTP response (`201 Created`) is initiated first and its timestamp logged. The `task-created` event is emitted immediately after.
    - In `DELETE /tasks/:id`, the event is emitted only upon successful database deletion.
    - Terminal logs demonstrate that HTTP responses complete in milliseconds and do not wait for the 2-second background notification timer.
+
+---
+
+## ⚡ Practical 11: Docker and Docker Compose Containerization
+
+### 1. Architectural Overview
+Practical 11 orchestrates the complete Task Management full-stack application across three isolated, interconnected container services defined in `docker-compose.yml`:
+
+```text
+                               +-----------------------------+
+                               |     Client Browser (Host)   |
+                               |    http://localhost:5173    |
+                               +--------------+--------------+
+                                              |
+                   Frontend HTTP / Assets     |     REST API Calls (Bearer JWT)
+                   Port 5173 ──► 80           |     Port 5000 ──► 5000
+                                              v
++─────────────────────────────────────────────────────────────────────────────────────────────────+
+|                                    Docker Bridge: app-network                                   |
+|                                                                                                 |
+|  +─────────────────────────+      +──────────────────────────+     +─────────────────────────+  |
+|  |     awdf-frontend       |      |       awdf-backend       |     |       awdf-mongodb      |  |
+|  |  (Nginx Alpine: Port 80)|      | (Node 20 Express: P5000) |     |   (Mongo 7.0: P27017)   |  |
+|  |                         |      |                          |     |                         |  |
+|  | - React 19 SPA static   |      | - Mongoose ODM           |     | - Persistent storage    |  |
+|  | - SPA Router fallback   |      | - JWT & Bcrypt auth      |     | - Health check ping     |  |
+|  | - Reverse Proxy /api/   |      | - Event-driven pipeline  |     | - Init database:        |  |
+|  | - Gzip performance      |      | - Connects to 'mongodb'  |     |   MyPortfolioToDo       |  |
+|  +─────────────────────────+      +────────────┬─────────────+     +────────────▲────────────+  |
+|                                                |                                |               |
+|                                                +────── Mongoose Connection ─────+               |
+|                                                    mongodb://mongodb:27017                      |
++─────────────────────────────────────────────────────────────────────────────────┼───────────────+
+                                                                                  |
+                                                                        Named Docker Volume:
+                                                                         awdf_mongodb_data
+                                                                          (/data/db)
+```
+
+1. **`frontend` (Container: `awdf-frontend`):**
+   - **Multi-stage Dockerfile:** Builds the React 19 application in `node:20-alpine`, embeds build-time arguments (`VITE_API_BASE_URL`), and serves the optimized production bundle with `nginx:alpine`.
+   - **Nginx Configuration:** Provides SPA fallback routing (`try_files $uri $uri/ /index.html;`), gzip compression, and an optional `/api/` reverse proxy pass.
+   - **Host Port Mapping:** Host port `5173` maps to Nginx container port `80`.
+
+2. **`backend` (Container: `awdf-backend`):**
+   - **Production Dockerfile:** Built on `node:20-alpine` with layer-cached `package*.json`, runs `npm start` on port `5000`.
+   - **Health-Checked Dependency:** Explicitly waits for `mongodb` to achieve `service_healthy` status before booting the API server.
+   - **Network Resolution:** Connects to MongoDB via internal Docker service DNS `mongodb://mongodb:27017/MyPortfolioToDo`.
+
+3. **`mongodb` (Container: `awdf-mongodb`):**
+   - **Official Image:** `mongo:7.0` configured on internal bridge network `app-network`.
+   - **Health Check:** Periodic ping using `mongosh --eval "db.adminCommand('ping')"` ensuring database readiness.
+   - **Persistent Storage:** Backed by the named volume `awdf_mongodb_data` mapped to `/data/db`.
+
+---
+
+### 2. Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (v24+ or newer) installed and running.
+- Docker Compose v2.20+ (included with Docker Desktop).
+
+Verify installation in PowerShell:
+```powershell
+docker --version
+docker compose version
+```
+
+---
+
+### 3. Environment Variables Configuration
+A template configuration file [`.env.example`](.env.example) is provided in the repository root:
+
+```env
+# Server and Database
+PORT=5000
+NODE_ENV=production
+DB_TYPE=local
+LOCAL_DB_URI=mongodb://mongodb:27017/MyPortfolioToDo
+MONGODB_URI=mongodb://mongodb:27017/MyPortfolioToDo
+
+# Security and CORS
+CLIENT_URL=http://localhost:5173
+JWT_SECRET=your_jwt_secret_key_here
+
+# Frontend Build Time
+VITE_API_BASE_URL=http://localhost:5000
+```
+
+---
+
+### 4. Running the Application with Docker Compose
+
+#### Build and Start All Services
+From the repository root, start all containers in detached mode:
+```powershell
+docker compose up --build -d
+```
+
+#### Check Running Services and Health
+Verify that all 3 containers are running and MongoDB is healthy:
+```powershell
+docker compose ps
+```
+
+*Expected output:*
+```text
+NAME            IMAGE                      STATUS                    PORTS
+awdf-backend    awdf-practicals-backend    Up (running)              0.0.0.0:5000->5000/tcp
+awdf-frontend   awdf-practicals-frontend   Up (running)              0.0.0.0:5173->80/tcp
+awdf-mongodb    mongo:7.0                  Up (healthy)              27017/tcp
+```
+
+#### View Live Container Logs
+Follow live aggregated logs or inspect specific services:
+```powershell
+# All services
+docker compose logs -f
+
+# Backend only
+docker compose logs -f backend
+
+# Frontend only
+docker compose logs -f frontend
+
+# MongoDB only
+docker compose logs -f mongodb
+```
+
+#### Access the Application
+- **Frontend SPA:** [http://localhost:5173](http://localhost:5173)
+- **Backend API Health Check:** [http://localhost:5000/health](http://localhost:5000/health)
+
+---
+
+### 5. Stopping the Containers & Data Persistence Verification
+
+#### Standard Stop (Preserves Data)
+Stop and remove containers and networks while keeping database records safe:
+```powershell
+docker compose down
+```
+
+> [!CAUTION]
+> **Do NOT use `docker compose down -v`** for routine stops. The `-v` flag deletes all named volumes, which would erase your MongoDB tasks and user accounts!
+
+#### Verifying MongoDB Volume Persistence
+1. Start the stack: `docker compose up -d`
+2. Open [http://localhost:5173](http://localhost:5173) and register an account or create tasks.
+3. Stop containers: `docker compose down`
+4. Inspect the volume to verify it remains intact: `docker volume ls | Select-String "mongodb_data"`
+5. Restart the stack: `docker compose up -d`
+6. Log in with the same account—all tasks and activity logs are completely preserved from the `awdf_mongodb_data` volume!
+
+---
+
+### 6. Common Troubleshooting Steps
+
+| Issue | Root Cause | Solution |
+|---|---|---|
+| **Port 5000 or 5173 already in use** | A local Node server or Vite dev server is running on the host. | Stop local Node processes: `Get-Process node \| Stop-Process` or stop previous background jobs. |
+| **Backend fails to connect to MongoDB** | Attempting to connect to `localhost:27017` from inside container instead of `mongodb`. | Ensure `LOCAL_DB_URI=mongodb://mongodb:27017/MyPortfolioToDo` is set in Compose or `.env`. |
+| **Browser API requests fail with Network Error** | Frontend bundle was built pointing to Docker internal hostname `http://backend:5000`. | The client browser runs on the host, not inside Docker. Ensure `VITE_API_BASE_URL` is set to `http://localhost:5000`. |
+| **Page refresh returns 404 in SPA** | Nginx does not route unknown paths to `index.html`. | Verify `try_files $uri $uri/ /index.html;` is present in `frontend/nginx.conf`. |
 
 ---
 

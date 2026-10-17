@@ -90,15 +90,18 @@ async function seedInitialData() {
 async function connectDB() {
   const dbType = (process.env.DB_TYPE || "cloud").trim().toLowerCase();
 
-  if (dbType === "local") {
-    const localURI = process.env.LOCAL_DB_URI || "mongodb://127.0.0.1:27017/MyPortfolioToDo";
+  if (dbType === "local" || dbType === "docker") {
+    const localURI =
+      process.env.LOCAL_DB_URI ||
+      process.env.MONGODB_URI ||
+      "mongodb://127.0.0.1:27017/MyPortfolioToDo";
     try {
       await mongoose.connect(localURI);
-      console.log(`🚀 [LOCAL DB] Successfully connected to Local MongoDB: ${localURI}`);
+      console.log(`🚀 [${dbType.toUpperCase()} DB] Successfully connected to MongoDB: ${localURI}`);
       await seedInitialData();
     } catch (err) {
-      console.error("❌ Local MongoDB connection error:", err.message);
-      console.error("💡 Tip: Make sure MongoDB service is running locally on port 27017.");
+      console.error(`❌ [${dbType.toUpperCase()} DB] MongoDB connection error:`, err.message);
+      console.error("💡 Tip: Make sure MongoDB service or container is running.");
     }
   } else {
     // Force Node.js to use Google DNS for SRV queries (prevents querySrv ECONNREFUSED)

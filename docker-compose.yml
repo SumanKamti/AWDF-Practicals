@@ -1,0 +1,64 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: awdf-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: MyPortfolioToDo
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: awdf-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DB_TYPE: local
+      LOCAL_DB_URI: mongodb://mongodb:27017/MyPortfolioToDo
+      MONGODB_URI: mongodb://mongodb:27017/MyPortfolioToDo
+      CLIENT_URL: http://localhost:5173
+      JWT_SECRET: ${JWT_SECRET:-practical-07-super-secret-jwt-key-2026}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:5000
+    container_name: awdf-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    name: app-network
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    name: awdf_mongodb_data
+    driver: local
