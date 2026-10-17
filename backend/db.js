@@ -67,19 +67,22 @@ const Task = mongoose.models.Task || mongoose.model("Task", taskSchema);
 const ActivityLog = mongoose.models.ActivityLog || mongoose.model("ActivityLog", logSchema);
 
 // Automatically seed initial data if database is completely empty
-async function seedInitialData() {
+async function seedInitialData(activeMode = null) {
   try {
     const count = await Task.countDocuments();
     if (count === 0) {
+      const dbType = (activeMode || process.env.DB_TYPE || "cloud").trim().toLowerCase();
+      const targetDb = dbType === "cloud" ? "MongoDB Atlas Cloud" : "Local/Docker MongoDB";
+
       await Task.create({ id: 1, title: "Learn React & Full Stack Integration", status: "complete" });
       await Task.create({ id: 2, title: "Configure MongoDB Atlas Cloud Database", status: "complete" });
       await Task.create({ id: 3, title: "Build Task Manager with Tabs & PDF Export", status: "ongoing" });
       await ActivityLog.create({
         action: "SEED",
-        details: "Initial tasks seeded in MongoDB Atlas Cloud",
+        details: `Initial tasks seeded in ${targetDb}`,
         user: "System Admin",
       });
-      console.log("🌱 Database was empty. Auto-seeded initial tasks into MongoDB Atlas!");
+      console.log(`🌱 Database was empty. Auto-seeded initial tasks into ${targetDb}!`);
     }
   } catch (error) {
     console.error("❌ Error seeding data:", error.message);
@@ -98,7 +101,7 @@ async function connectDB() {
     try {
       await mongoose.connect(localURI);
       console.log(`🚀 [${dbType.toUpperCase()} DB] Successfully connected to MongoDB: ${localURI}`);
-      await seedInitialData();
+      await seedInitialData(dbType);
     } catch (err) {
       console.error(`❌ [${dbType.toUpperCase()} DB] MongoDB connection error:`, err.message);
       console.error("💡 Tip: Make sure MongoDB service or container is running.");
@@ -117,7 +120,7 @@ async function connectDB() {
     try {
       await mongoose.connect(cloudURI);
       console.log("🚀 [CLOUD DB - PRIMARY] Successfully connected to Cloud MongoDB Atlas!");
-      await seedInitialData();
+      await seedInitialData(dbType);
     } catch (err) {
       console.error("❌ Cloud MongoDB connection error:", err.message);
     }
