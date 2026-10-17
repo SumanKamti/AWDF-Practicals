@@ -1,21 +1,4 @@
 services:
-  mongodb:
-    image: mongo:7.0
-    container_name: awdf-mongodb
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_DATABASE: MyPortfolioToDo
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
   backend:
     build:
       context: ./backend
@@ -24,19 +7,20 @@ services:
     restart: unless-stopped
     ports:
       - "5000:5000"
+    env_file:
+      - ./backend/.env
     environment:
       PORT: 5000
       NODE_ENV: production
-      DB_TYPE: local
-      LOCAL_DB_URI: mongodb://mongodb:27017/MyPortfolioToDo
-      MONGODB_URI: mongodb://mongodb:27017/MyPortfolioToDo
       CLIENT_URL: http://localhost:5173
-      JWT_SECRET: ${JWT_SECRET:-practical-07-super-secret-jwt-key-2026}
-    depends_on:
-      mongodb:
-        condition: service_healthy
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   frontend:
     build:
@@ -49,16 +33,18 @@ services:
     ports:
       - "5173:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
 networks:
   app-network:
     name: app-network
     driver: bridge
-
-volumes:
-  mongodb_data:
-    name: awdf_mongodb_data
-    driver: local

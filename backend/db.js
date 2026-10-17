@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const dns = require("dns");
-require("dotenv").config();
+require("dotenv").config({ path: process.env.DOTENV_CONFIG_PATH || undefined });
 
 // User Schema for JWT authentication, bcrypt password hashing & Google OAuth
 const userSchema = new mongoose.Schema(
@@ -67,68 +67,54 @@ const Task = mongoose.models.Task || mongoose.model("Task", taskSchema);
 const ActivityLog = mongoose.models.ActivityLog || mongoose.model("ActivityLog", logSchema);
 
 // Automatically seed initial data if database is completely empty
-async function seedInitialData(activeMode = null) {
+async function seedInitialData() {
   try {
     const count = await Task.countDocuments();
     if (count === 0) {
-      const dbType = (activeMode || process.env.DB_TYPE || "cloud").trim().toLowerCase();
-      const targetDb = dbType === "cloud" ? "MongoDB Atlas Cloud" : "Local/Docker MongoDB";
-
       await Task.create({ id: 1, title: "Learn React & Full Stack Integration", status: "complete" });
       await Task.create({ id: 2, title: "Configure MongoDB Atlas Cloud Database", status: "complete" });
       await Task.create({ id: 3, title: "Build Task Manager with Tabs & PDF Export", status: "ongoing" });
       await ActivityLog.create({
         action: "SEED",
-        details: `Initial tasks seeded in ${targetDb}`,
+        details: "Initial tasks seeded in MongoDB Atlas Cloud",
         user: "System Admin",
       });
-      console.log(`🌱 Database was empty. Auto-seeded initial tasks into ${targetDb}!`);
+      console.log("🌱 Database was empty. Auto-seeded initial tasks into MongoDB Atlas Cloud!");
     }
   } catch (error) {
     console.error("❌ Error seeding data:", error.message);
   }
 }
 
-// Connect to MongoDB Atlas (Primary) or Local MongoDB fallback
+// Connect to MongoDB Atlas (Cloud Only)
 async function connectDB() {
-  const dbType = (process.env.DB_TYPE || "cloud").trim().toLowerCase();
+  // Force Node.js to use Google DNS for SRV queries (prevents querySrv ECONNREFUSED in Docker Alpine)
+  dns.setServers(["8.8.8.8", "8.8.4.4"]);
+  const cloudURI = (process.env.MONGODB_URI || process.env.CLOUD_DB_URI || "").trim();
 
-  if (dbType === "local" || dbType === "docker") {
-    const localURI =
-      process.env.LOCAL_DB_URI ||
-      process.env.MONGODB_URI ||
-      "mongodb://127.0.0.1:27017/MyPortfolioToDo";
-    try {
-      await mongoose.connect(localURI);
-      console.log(`🚀 [${dbType.toUpperCase()} DB] Successfully connected to MongoDB: ${localURI}`);
-      await seedInitialData(dbType);
-    } catch (err) {
-      console.error(`❌ [${dbType.toUpperCase()} DB] MongoDB connection error:`, err.message);
-      console.error("💡 Tip: Make sure MongoDB service or container is running.");
-    }
-  } else {
-    // Force Node.js to use Google DNS for SRV queries (prevents querySrv ECONNREFUSED)
-    dns.setServers(["8.8.8.8", "8.8.4.4"]);
-    const cloudURI = process.env.CLOUD_DB_URI || process.env.MONGODB_URI;
+  if (!cloudURI) {
+    console.error("❌ FATAL CONFIGURATION ERROR: MONGODB_URI environment variable is missing or empty.");
+    console.error("   The application is configured to run exclusively with MongoDB Atlas.");
+    console.error("   Local MongoDB and fallback modes are permanently disabled.");
+    console.error("💡 Tip: Provide your MongoDB Atlas connection string as MONGODB_URI in backend/.env.");
+    process.exit(1);
+  }
 
-    if (!cloudURI) {
-      console.warn("⚠️ Warning: CLOUD_DB_URI / MONGODB_URI is not set in backend/.env!");
-      console.warn("💡 Tip: Provide your MongoDB Atlas connection string in backend/.env");
-      return;
-    }
-
-    try {
-      await mongoose.connect(cloudURI);
-      console.log("🚀 [CLOUD DB - PRIMARY] Successfully connected to Cloud MongoDB Atlas!");
-      await seedInitialData(dbType);
-    } catch (err) {
-      console.error("❌ Cloud MongoDB connection error:", err.message);
-    }
+  try {
+    await mongoose.connect(cloudURI);
+    console.log("🚀 [CLOUD DB - PRIMARY] Successfully connected to Cloud MongoDB Atlas!");
+    await seedInitialData();
+  } catch (err) {
+    console.error("❌ FATAL DATABASE ERROR: Failed to connect to MongoDB Atlas Cloud:", err.message);
+    process.exit(1);
   }
 }
 
 if (mongoose.connection.readyState === 0) {
-  connectDB();
+  connectDB().catch((err) => {
+    console.error("❌ Unhandled DB error during initialization:", err.message);
+    process.exit(1);
+  });
 }
 
 module.exports = {

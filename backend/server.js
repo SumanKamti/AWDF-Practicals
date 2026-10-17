@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: process.env.DOTENV_CONFIG_PATH || undefined });
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
@@ -22,7 +22,15 @@ const taskEvents = require("./events");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || "practical-07-super-secret-jwt-key-2026";
+
+// Practical 7 & Practical 11: Secure JWT Secret Configuration (Fail-fast at startup)
+const JWT_SECRET = (process.env.JWT_SECRET || "").trim();
+if (!JWT_SECRET) {
+  console.error("❌ FATAL CONFIGURATION ERROR: JWT_SECRET environment variable is missing or empty.");
+  console.error("   A secure JWT_SECRET is required to sign and verify authentication tokens.");
+  console.error("💡 Tip: Provide a strong JWT_SECRET in backend/.env.");
+  process.exit(1);
+}
 
 // Logging helper to record user/system actions in MongoDB Atlas
 async function logActivity(action, details, user = "Guest User", userId = null) {
@@ -152,12 +160,12 @@ app.use(requestLogger);
 app.use(express.json());
 app.use(requireJsonContent);
 
-// Health check endpoint
-app.get("/health", (req, res) => {
+// Health check endpoint (accessible at /health and /api/health)
+app.get(["/health", "/api/health"], (req, res) => {
   res.status(200).json({
     status: "ok",
-    database: process.env.DB_TYPE || "cloud",
-    practical: "Practical 10: Asynchronous Processing with Event-Driven Architecture",
+    database: "cloud (MongoDB Atlas)",
+    practical: "Practical 11: Docker and Docker Compose (MongoDB Atlas Cloud)",
     timestamp: new Date().toISOString(),
   });
 });
@@ -900,8 +908,8 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 AWDF API Server running on http://localhost:${PORT}`);
-  console.log(`📦 Active Database Mode: [${(process.env.DB_TYPE || "cloud").toUpperCase()}]`);
+  console.log(`📦 Active Database Mode: [CLOUD - MONGODB ATLAS]`);
   console.log(`🔒 JWT Authentication & Middleware Pipeline active`);
   console.log(`⚡ Practical 10: Event-Driven Architecture (EventEmitter) active`);
-  console.log(`🐳 Practical 11: Docker Containerized Environment active`);
+  console.log(`🐳 Practical 11: Docker Containerized Environment (MongoDB Atlas Cloud) active`);
 });

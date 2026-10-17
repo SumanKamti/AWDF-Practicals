@@ -16,7 +16,7 @@ This repository contains the complete laboratory work for the **Advanced Web Dev
 The curriculum is designed as a **progressive learning journey** from basic frontend components to an enterprise-grade full-stack web application. All exercises (Practicals 1 through 11) are unified into this production-ready application featuring:
 - A responsive, multi-page **React (Vite) Student Portfolio & Task Management Application**.
 - A secure **Express.js REST API Server**.
-- Cloud persistence via **MongoDB Atlas** and containerized persistence via **MongoDB 7.0**.
+- Enterprise cloud persistence exclusively via **MongoDB Atlas**.
 - Comprehensive security with **JWT authentication, bcrypt password hashing, Google OAuth, and Nodemailer OTP email verification**.
 - Full-stack containerization via **Docker & Docker Compose**.
 
@@ -38,7 +38,7 @@ The table below illustrates how each practical syllabus requirement is implement
 | **Practical 8** | **Performance Optimization & Lazy Loading** | Route-based code splitting via `React.lazy()` and dynamic `import()` for Projects and Contact, Accessible luxury `<LoadingFallback />` Suspense indicator, Component-level lazy loading for heavy `ActivityLogs` audit panel, `React.memo` profiling to eliminate redundant re-renders, and bundle size reduction. | `frontend/src/App.jsx`<br>`frontend/src/components/LoadingFallback.jsx`<br>`frontend/src/components/LoadingFallback.css`<br>`frontend/src/pages/Task.jsx`<br>`frontend/src/components/Footer.jsx`<br>`docs/performance/` |
 | **Practical 9** | **In-Memory Caching & Query Optimization** | Backend in-memory caching using `node-cache` (60s TTL), user-scoped cache keys (`tasks:user:<userId>:list`, `tasks:user:<userId>:item:<id>`), cache hit/miss resolution, automatic cache invalidation on write operations (`POST`, `PUT`, `DELETE`), safe metrics endpoint (`/api/tasks/cache-stats`), and single task endpoint (`GET /api/tasks/:id`). | `backend/cache.js`<br>`backend/server.js`<br>`backend/package.json`<br>`frontend/src/services/api.js` |
 | **Practical 10** | **Asynchronous Processing with Event-Driven Architecture** | Decoupled background notifications using Node.js built-in `EventEmitter` (`TaskEvents` singleton), dedicated listeners (`task-created`, `task-deleted`, `notification-error`), non-blocking HTTP response initiation with timestamps, and 2-second simulated background delay. | `backend/events.js`<br>`backend/listeners.js`<br>`backend/server.js` |
-| **Practical 11** | **Docker & Docker Compose Containerization** | Multi-stage Docker build for React/Vite with Nginx, production Node.js Dockerfile for Express, 3-tier Compose architecture (frontend, backend, mongodb), bridge network (`app-network`), persistent named volume (`awdf_mongodb_data`), and health-checked container dependencies. | `docker-compose.yml`<br>`frontend/Dockerfile`<br>`frontend/nginx.conf`<br>`backend/Dockerfile`<br>`.env.example` |
+| **Practical 11** | **Docker & Docker Compose (MongoDB Atlas Cloud)** | Multi-stage Docker build for React/Vite with Nginx, production Node.js Dockerfile for Express, Docker Compose orchestration for frontend and backend containers on bridge network (`app-network`), secure environment variable injection via `backend/.env`, and direct MongoDB Atlas cloud persistence. | `docker-compose.yml`<br>`frontend/Dockerfile`<br>`frontend/nginx.conf`<br>`backend/Dockerfile`<br>`.env.example` |
 
 ---
 
@@ -385,10 +385,10 @@ Implement decoupled, asynchronous task lifecycle notifications using Node.js's n
 
 ---
 
-## ⚡ Practical 11: Docker and Docker Compose Containerization
+## ⚡ Practical 11: Docker and Docker Compose Containerization (MongoDB Atlas Cloud)
 
 ### 1. Architectural Overview
-Practical 11 orchestrates the complete Task Management full-stack application across three isolated, interconnected container services defined in `docker-compose.yml`:
+Practical 11 orchestrates the Task Management full-stack application across two containerized services (`frontend` and `backend`) defined in `docker-compose.yml`, connecting directly to **MongoDB Atlas Cloud**:
 
 ```text
                                +-----------------------------+
@@ -402,45 +402,44 @@ Practical 11 orchestrates the complete Task Management full-stack application ac
 +─────────────────────────────────────────────────────────────────────────────────────────────────+
 |                                    Docker Bridge: app-network                                   |
 |                                                                                                 |
-|  +─────────────────────────+      +──────────────────────────+     +─────────────────────────+  |
-|  |     awdf-frontend       |      |       awdf-backend       |     |       awdf-mongodb      |  |
-|  |  (Nginx Alpine: Port 80)|      | (Node 20 Express: P5000) |     |   (Mongo 7.0: P27017)   |  |
-|  |                         |      |                          |     |                         |  |
-|  | - React 19 SPA static   |      | - Mongoose ODM           |     | - Persistent storage    |  |
-|  | - SPA Router fallback   |      | - JWT & Bcrypt auth      |     | - Health check ping     |  |
-|  | - Reverse Proxy /api/   |      | - Event-driven pipeline  |     | - Init database:        |  |
-|  | - Gzip performance      |      | - Connects to 'mongodb'  |     |   MyPortfolioToDo       |  |
-|  +─────────────────────────+      +────────────┬─────────────+     +────────────▲────────────+  |
-|                                                |                                |               |
-|                                                +────── Mongoose Connection ─────+               |
-|                                                    mongodb://mongodb:27017                      |
-+─────────────────────────────────────────────────────────────────────────────────┼───────────────+
-                                                                                  |
-                                                                        Named Docker Volume:
-                                                                         awdf_mongodb_data
-                                                                          (/data/db)
+|  +─────────────────────────+                         +──────────────────────────+               |
+|  |     awdf-frontend       |                         |       awdf-backend       |               |
+|  |  (Nginx Alpine: Port 80)|                         | (Node 20 Express: P5000) |               |
+|  |                         |                         |                          |               |
+|  | - React 19 SPA static   |                         | - Mongoose ODM           |               |
+|  | - SPA Router fallback   |                         | - JWT & Bcrypt auth      |               |
+|  | - Reverse Proxy /api/   |                         | - Event-driven pipeline  |               |
+|  | - Gzip performance      |                         | - Reads MONGODB_URI      |               |
+|  +─────────────────────────+                         +────────────┬─────────────+               |
+|                                                                   |                             |
++───────────────────────────────────────────────────────────────────┼─────────────────────────────+
+                                                                    |
+                                                     HTTPS / TLS (Port 27017)
+                                                        Public Internet
+                                                                    v
+                                                       +──────────────────────────+
+                                                       |   MongoDB Atlas Cloud    |
+                                                       |   Database Cluster       |
+                                                       | (cluster0.xxxx.mongodb)  |
+                                                       +──────────────────────────+
 ```
 
 1. **`frontend` (Container: `awdf-frontend`):**
-   - **Multi-stage Dockerfile:** Builds the React 19 application in `node:20-alpine`, embeds build-time arguments (`VITE_API_BASE_URL`), and serves the optimized production bundle with `nginx:alpine`.
+   - **Multi-stage Dockerfile:** Builds the React 19 application in `node:20-alpine`, embeds build-time argument (`VITE_API_BASE_URL`), and serves the optimized production bundle with `nginx:alpine`.
    - **Nginx Configuration:** Provides SPA fallback routing (`try_files $uri $uri/ /index.html;`), gzip compression, and an optional `/api/` reverse proxy pass.
    - **Host Port Mapping:** Host port `5173` maps to Nginx container port `80`.
 
 2. **`backend` (Container: `awdf-backend`):**
    - **Production Dockerfile:** Built on `node:20-alpine` with layer-cached `package*.json`, runs `npm start` on port `5000`.
-   - **Health-Checked Dependency:** Explicitly waits for `mongodb` to achieve `service_healthy` status before booting the API server.
-   - **Network Resolution:** Connects to MongoDB via internal Docker service DNS `mongodb://mongodb:27017/MyPortfolioToDo`.
-
-3. **`mongodb` (Container: `awdf-mongodb`):**
-   - **Official Image:** `mongo:7.0` configured on internal bridge network `app-network`.
-   - **Health Check:** Periodic ping using `mongosh --eval "db.adminCommand('ping')"` ensuring database readiness.
-   - **Persistent Storage:** Backed by the named volume `awdf_mongodb_data` mapped to `/data/db`.
+   - **Secure Environment Injection:** Reads `MONGODB_URI` securely from the local, untracked `backend/.env` via `env_file`.
+   - **Cloud Persistence:** Connects directly to the MongoDB Atlas Cloud cluster using Google DNS for SRV resolution (`dns.setServers(['8.8.8.8', '8.8.4.4'])`). If `MONGODB_URI` is missing, the backend fails fast with a descriptive error instead of silently falling back.
 
 ---
 
 ### 2. Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (v24+ or newer) installed and running.
 - Docker Compose v2.20+ (included with Docker Desktop).
+- A free **MongoDB Atlas Cloud Cluster** with connection URI.
 
 Verify installation in PowerShell:
 ```powershell
@@ -454,18 +453,18 @@ docker compose version
 A template configuration file [`.env.example`](.env.example) is provided in the repository root:
 
 ```env
-# Server and Database
+# Backend Configuration
 PORT=5000
 NODE_ENV=production
-DB_TYPE=local
-LOCAL_DB_URI=mongodb://mongodb:27017/MyPortfolioToDo
-MONGODB_URI=mongodb://mongodb:27017/MyPortfolioToDo
-
-# Security and CORS
-CLIENT_URL=http://localhost:5173
 JWT_SECRET=your_jwt_secret_key_here
 
-# Frontend Build Time
+# Frontend Client Origin (for CORS)
+CLIENT_URL=http://localhost:5173
+
+# Database Connection (MongoDB Atlas Cloud Only)
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.xxxx.mongodb.net/MyPortfolioToDo?retryWrites=true&w=majority
+
+# Frontend API URL (Embedded at Vite build time, accessed from browser)
 VITE_API_BASE_URL=http://localhost:5000
 ```
 
@@ -473,14 +472,14 @@ VITE_API_BASE_URL=http://localhost:5000
 
 ### 4. Running the Application with Docker Compose
 
-#### Build and Start All Services
-From the repository root, start all containers in detached mode:
+#### Build and Start Services
+From the repository root, start containers in detached mode:
 ```powershell
 docker compose up --build -d
 ```
 
-#### Check Running Services and Health
-Verify that all 3 containers are running and MongoDB is healthy:
+#### Check Running Services
+Verify that both containers are running and healthy:
 ```powershell
 docker compose ps
 ```
@@ -488,9 +487,8 @@ docker compose ps
 *Expected output:*
 ```text
 NAME            IMAGE                      STATUS                    PORTS
-awdf-backend    awdf-practicals-backend    Up (running)              0.0.0.0:5000->5000/tcp
-awdf-frontend   awdf-practicals-frontend   Up (running)              0.0.0.0:5173->80/tcp
-awdf-mongodb    mongo:7.0                  Up (healthy)              27017/tcp
+awdf-backend    awdf-practicals-backend    Up (healthy)              0.0.0.0:5000->5000/tcp
+awdf-frontend   awdf-practicals-frontend   Up (healthy)              0.0.0.0:5173->80/tcp
 ```
 
 #### View Live Container Logs
@@ -499,40 +497,27 @@ Follow live aggregated logs or inspect specific services:
 # All services
 docker compose logs -f
 
-# Backend only
+# Backend only (shows Atlas connection & EventEmitter notifications)
 docker compose logs -f backend
 
 # Frontend only
 docker compose logs -f frontend
-
-# MongoDB only
-docker compose logs -f mongodb
 ```
 
 #### Access the Application
 - **Frontend SPA:** [http://localhost:5173](http://localhost:5173)
-- **Backend API Health Check:** [http://localhost:5000/health](http://localhost:5000/health)
+- **Backend API Health Check:** [http://localhost:5000/health](http://localhost:5000/health) or [http://localhost:5000/api/health](http://localhost:5000/api/health)
 
 ---
 
-### 5. Stopping the Containers & Data Persistence Verification
+### 5. Stopping the Containers
 
-#### Standard Stop (Preserves Data)
-Stop and remove containers and networks while keeping database records safe:
+Stop and remove containers and networks:
 ```powershell
 docker compose down
 ```
 
-> [!CAUTION]
-> **Do NOT use `docker compose down -v`** for routine stops. The `-v` flag deletes all named volumes, which would erase your MongoDB tasks and user accounts!
-
-#### Verifying MongoDB Volume Persistence
-1. Start the stack: `docker compose up -d`
-2. Open [http://localhost:5173](http://localhost:5173) and register an account or create tasks.
-3. Stop containers: `docker compose down`
-4. Inspect the volume to verify it remains intact: `docker volume ls | Select-String "mongodb_data"`
-5. Restart the stack: `docker compose up -d`
-6. Log in with the same account—all tasks and activity logs are completely preserved from the `awdf_mongodb_data` volume!
+*Note: All tasks and user profiles reside safely in MongoDB Atlas Cloud and persist across container lifecycle events.*
 
 ---
 
@@ -540,10 +525,11 @@ docker compose down
 
 | Issue | Root Cause | Solution |
 |---|---|---|
-| **Port 5000 or 5173 already in use** | A local Node server or Vite dev server is running on the host. | Stop local Node processes: `Get-Process node \| Stop-Process` or stop previous background jobs. |
-| **Backend fails to connect to MongoDB** | Attempting to connect to `localhost:27017` from inside container instead of `mongodb`. | Ensure `LOCAL_DB_URI=mongodb://mongodb:27017/MyPortfolioToDo` is set in Compose or `.env`. |
-| **Browser API requests fail with Network Error** | Frontend bundle was built pointing to Docker internal hostname `http://backend:5000`. | The client browser runs on the host, not inside Docker. Ensure `VITE_API_BASE_URL` is set to `http://localhost:5000`. |
-| **Page refresh returns 404 in SPA** | Nginx does not route unknown paths to `index.html`. | Verify `try_files $uri $uri/ /index.html;` is present in `frontend/nginx.conf`. |
+| **`MONGODB_URI environment variable is missing or empty`** | `backend/.env` is missing or does not define `MONGODB_URI`. | Add your MongoDB Atlas connection string to `backend/.env` as `MONGODB_URI=mongodb+srv://...`. |
+| **`JWT_SECRET environment variable is missing or empty`** | `backend/.env` does not define `JWT_SECRET`. | Add a secure secret string to `backend/.env` as `JWT_SECRET=your_jwt_secret_key_here`. |
+| **Port 5000 or 5173 already in use** | A local Node server or Vite dev server is running on host. | Stop local Node processes: `Get-Process node \| Stop-Process`. |
+| **`querySrv ECONNREFUSED` on Atlas SRV** | Local or corporate DNS does not support SRV records. | `backend/db.js` automatically configures Google DNS `8.8.8.8` to resolve Atlas SRV endpoints. |
+| **Browser API requests fail with Network Error** | Frontend bundle was built pointing to Docker internal hostname. | The client browser runs on the host machine. Ensure `VITE_API_BASE_URL` is set to `http://localhost:5000`. |
 
 ---
 
