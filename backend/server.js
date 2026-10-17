@@ -16,6 +16,9 @@ const {
   invalidateUserTaskCache,
   getCacheMetrics,
 } = require("./cache");
+// Practical 10: Event-Driven Architecture with EventEmitter
+require("./listeners");
+const taskEvents = require("./events");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -154,7 +157,7 @@ app.get("/health", (req, res) => {
   res.status(200).json({
     status: "ok",
     database: process.env.DB_TYPE || "cloud",
-    practical: "Practical 7: Authentication and Middleware Pipeline",
+    practical: "Practical 10: Asynchronous Processing with Event-Driven Architecture",
     timestamp: new Date().toISOString(),
   });
 });
@@ -774,6 +777,9 @@ app.post(["/tasks", "/api/tasks"], authMiddleware, validateTaskInput, async (req
       userId
     );
 
+    const responseTimestamp = new Date().toISOString();
+    console.log(`[HTTP Response] [${responseTimestamp}] 201 Created sent for Task #${newTask.id}: "${newTask.title}"`);
+
     res.status(201).json({
       id: newTask.id,
       title: newTask.title,
@@ -781,6 +787,9 @@ app.post(["/tasks", "/api/tasks"], authMiddleware, validateTaskInput, async (req
       createdAt: newTask.createdAt,
       updatedAt: newTask.updatedAt,
     });
+
+    // Practical 10: Asynchronously trigger background notification via EventEmitter
+    taskEvents.emit("task-created", newTask);
   } catch (error) {
     next(error);
   }
@@ -863,7 +872,13 @@ app.delete(["/tasks/:id", "/api/tasks/:id"], authMiddleware, validateTaskId, asy
 
     await logActivity("DELETE", `Deleted task #${task.id}: "${task.title}"`, userName, userId);
 
+    const responseTimestamp = new Date().toISOString();
+    console.log(`[HTTP Response] [${responseTimestamp}] 200 OK sent for deleting Task #${task.id}: "${task.title}"`);
+
     res.status(200).json({ message: "Task deleted successfully", id: req.taskId });
+
+    // Practical 10: Emit task-deleted event after successful deletion
+    taskEvents.emit("task-deleted", task);
   } catch (error) {
     next(error);
   }
@@ -884,7 +899,8 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Practical 7 API Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Practical 10 API Server running on http://localhost:${PORT}`);
   console.log(`📦 Active Database Mode: [${(process.env.DB_TYPE || "cloud").toUpperCase()}]`);
   console.log(`🔒 JWT Authentication & Middleware Pipeline active`);
+  console.log(`⚡ Practical 10: Event-Driven Architecture (EventEmitter) active`);
 });

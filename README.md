@@ -13,7 +13,7 @@
 
 This repository contains the complete laboratory work for the **Advanced Web Development Framework (AWDF)** course at **CSPIT, CHARUSAT**.
 
-The curriculum is designed as a **progressive learning journey** from basic frontend components to an enterprise-grade full-stack web application. All exercises (Practicals 1 through 8) are unified into this production-ready application featuring:
+The curriculum is designed as a **progressive learning journey** from basic frontend components to an enterprise-grade full-stack web application. All exercises (Practicals 1 through 10) are unified into this production-ready application featuring:
 - A responsive, multi-page **React (Vite) Student Portfolio & Task Management Application**.
 - A secure **Express.js REST API Server**.
 - Cloud persistence via **MongoDB Atlas**.
@@ -21,7 +21,7 @@ The curriculum is designed as a **progressive learning journey** from basic fron
 
 ---
 
-## 🎓 Progressive Curriculum Mapping (Practicals 1 – 8)
+## 🎓 Progressive Curriculum Mapping (Practicals 1 – 10)
 
 The table below illustrates how each practical syllabus requirement is implemented and integrated into this unified codebase:
 
@@ -36,6 +36,7 @@ The table below illustrates how each practical syllabus requirement is implement
 | **Practical 7** | **Authentication & Security Pipeline** | User registration and login, `bcryptjs` password hashing, JWT token signing and verification, `authMiddleware`, React `AuthContext` session persistence. *(Includes Bonus / Practical 7 Extension: Google OAuth GIS, Nodemailer OTP verification, per-user task sandboxing & task locking in `backend/mailer.js`).* | `backend/server.js`<br>`backend/db.js`<br>`backend/mailer.js`<br>`frontend/src/context/AuthContext.jsx`<br>`frontend/src/components/AuthModal.jsx` |
 | **Practical 8** | **Performance Optimization & Lazy Loading** | Route-based code splitting via `React.lazy()` and dynamic `import()` for Projects and Contact, Accessible luxury `<LoadingFallback />` Suspense indicator, Component-level lazy loading for heavy `ActivityLogs` audit panel, `React.memo` profiling to eliminate redundant re-renders, and bundle size reduction. | `frontend/src/App.jsx`<br>`frontend/src/components/LoadingFallback.jsx`<br>`frontend/src/components/LoadingFallback.css`<br>`frontend/src/pages/Task.jsx`<br>`frontend/src/components/Footer.jsx`<br>`docs/performance/` |
 | **Practical 9** | **In-Memory Caching & Query Optimization** | Backend in-memory caching using `node-cache` (60s TTL), user-scoped cache keys (`tasks:user:<userId>:list`, `tasks:user:<userId>:item:<id>`), cache hit/miss resolution, automatic cache invalidation on write operations (`POST`, `PUT`, `DELETE`), safe metrics endpoint (`/api/tasks/cache-stats`), and single task endpoint (`GET /api/tasks/:id`). | `backend/cache.js`<br>`backend/server.js`<br>`backend/package.json`<br>`frontend/src/services/api.js` |
+| **Practical 10** | **Asynchronous Processing with Event-Driven Architecture** | Decoupled background notifications using Node.js built-in `EventEmitter` (`TaskEvents` singleton), dedicated listeners (`task-created`, `task-deleted`, `notification-error`), non-blocking HTTP response initiation with timestamps, and 2-second simulated background delay. | `backend/events.js`<br>`backend/listeners.js`<br>`backend/server.js` |
 
 ---
 
@@ -363,6 +364,22 @@ Enhance database throughput and API response latency by implementing in-memory c
 4. **Automated Cache Invalidation:** Write operations (`POST /api/tasks`, `PUT /api/tasks/:id`, `DELETE /api/tasks/:id`) proactively purge corresponding user list and item cache keys.
 5. **Single Task Fetch Route (`GET /api/tasks/:id`):** Provides cached lookups for individual tasks by their unique ID.
 6. **Telemetry & Debug Endpoint (`GET /api/tasks/cache-stats`):** Exposes non-sensitive performance counters including `hits`, `misses`, `hitRatio`, `keysSet`, `keysInvalidated`, and `activeKeysCount`.
+
+---
+
+## ⚡ Practical 10: Asynchronous Processing with Event-Driven Architecture
+
+### Objective
+Implement decoupled, asynchronous task lifecycle notifications using Node.js's native `EventEmitter` module without external message queue dependencies:
+1. **Shared Event Emitter Module (`backend/events.js`):** Extends Node.js's built-in `EventEmitter` class with a custom `TaskEvents` class, exporting a single shared instance (Singleton pattern).
+2. **Decoupled Listeners Module (`backend/listeners.js`):**
+   - **`task-created` Listener:** Logs execution start timestamp, simulates 2000 ms background processing (such as email alerts or webhook notifications) via `setTimeout()`, and logs task title, assigned user (`userId` from schema), and completion timestamp.
+   - **`task-deleted` Listener:** Logs task deletion confirmation with task title and timestamp upon successful deletion.
+   - **Custom Error Event (`notification-error` & `error`):** Safely catches and logs synchronous and asynchronous failures without throwing unhandled exceptions or sending double HTTP responses.
+3. **Non-Blocking API Integration (`backend/server.js`):**
+   - In `POST /tasks`, the HTTP response (`201 Created`) is initiated first and its timestamp logged. The `task-created` event is emitted immediately after.
+   - In `DELETE /tasks/:id`, the event is emitted only upon successful database deletion.
+   - Terminal logs demonstrate that HTTP responses complete in milliseconds and do not wait for the 2-second background notification timer.
 
 ---
 
