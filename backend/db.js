@@ -110,7 +110,7 @@ async function connectDB() {
   }
 }
 
-if (mongoose.connection.readyState === 0) {
+if (process.env.NODE_ENV !== "test" && mongoose.connection.readyState === 0) {
   connectDB().catch((err) => {
     console.error("❌ Unhandled DB error during initialization:", err.message);
     process.exit(1);

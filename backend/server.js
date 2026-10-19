@@ -24,7 +24,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Practical 7 & Practical 11: Secure JWT Secret Configuration (Fail-fast at startup)
-const JWT_SECRET = (process.env.JWT_SECRET || "").trim();
+const JWT_SECRET = (
+  process.env.JWT_SECRET ||
+  (process.env.NODE_ENV === "test" ? "ci-test-mock-jwt-secret-not-for-production" : "")
+).trim();
 if (!JWT_SECRET) {
   console.error("❌ FATAL CONFIGURATION ERROR: JWT_SECRET environment variable is missing or empty.");
   console.error("   A secure JWT_SECRET is required to sign and verify authentication tokens.");
@@ -906,10 +909,22 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 AWDF API Server running on http://localhost:${PORT}`);
-  console.log(`📦 Active Database Mode: [CLOUD - MONGODB ATLAS]`);
-  console.log(`🔒 JWT Authentication & Middleware Pipeline active`);
-  console.log(`⚡ Practical 10: Event-Driven Architecture (EventEmitter) active`);
-  console.log(`🐳 Practical 11: Docker Containerized Environment (MongoDB Atlas Cloud) active`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 AWDF API Server running on http://localhost:${PORT}`);
+    console.log(`📦 Active Database Mode: [CLOUD - MONGODB ATLAS]`);
+    console.log(`🔒 JWT Authentication & Middleware Pipeline active`);
+    console.log(`⚡ Practical 10: Event-Driven Architecture (EventEmitter) active`);
+    console.log(`🐳 Practical 11: Docker Containerized Environment (MongoDB Atlas Cloud) active`);
+  });
+}
+
+module.exports = {
+  app,
+  validateTaskId,
+  validateTaskInput,
+  validateRegisterInput,
+  validateLoginInput,
+  requireJsonContent,
+  authMiddleware,
+};

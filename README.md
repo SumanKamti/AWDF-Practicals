@@ -6,6 +6,7 @@
 [![JWT](https://img.shields.io/badge/Auth-JWT%20%2B%20Bcrypt-000000?logo=jsonwebtokens&logoColor=white)](https://jwt.io/)
 [![Google OAuth](https://img.shields.io/badge/OAuth-Google%20Identity%20Services-4285F4?logo=google&logoColor=white)](https://developers.google.com/identity)
 [![Nodemailer](https://img.shields.io/badge/Email-Nodemailer%20OTP-0A85EA?logo=gmail&logoColor=white)](https://nodemailer.com/)
+[![CI Pipeline](https://github.com/SumanKamti/AWDF-Practicals/actions/workflows/ci.yml/badge.svg)](https://github.com/SumanKamti/AWDF-Practicals/actions/workflows/ci.yml)
 
 ---
 
@@ -39,6 +40,7 @@ The table below illustrates how each practical syllabus requirement is implement
 | **Practical 9** | **In-Memory Caching & Query Optimization** | Backend in-memory caching using `node-cache` (60s TTL), user-scoped cache keys (`tasks:user:<userId>:list`, `tasks:user:<userId>:item:<id>`), cache hit/miss resolution, automatic cache invalidation on write operations (`POST`, `PUT`, `DELETE`), safe metrics endpoint (`/api/tasks/cache-stats`), and single task endpoint (`GET /api/tasks/:id`). | `backend/cache.js`<br>`backend/server.js`<br>`backend/package.json`<br>`frontend/src/services/api.js` |
 | **Practical 10** | **Asynchronous Processing with Event-Driven Architecture** | Decoupled background notifications using Node.js built-in `EventEmitter` (`TaskEvents` singleton), dedicated listeners (`task-created`, `task-deleted`, `notification-error`), non-blocking HTTP response initiation with timestamps, and 2-second simulated background delay. | `backend/events.js`<br>`backend/listeners.js`<br>`backend/server.js` |
 | **Practical 11** | **Docker & Docker Compose (MongoDB Atlas Cloud)** | Multi-stage Docker build for React/Vite with Nginx, production Node.js Dockerfile for Express, Docker Compose orchestration for frontend and backend containers on bridge network (`app-network`), secure environment variable injection via `backend/.env`, and direct MongoDB Atlas cloud persistence. | `docker-compose.yml`<br>`frontend/Dockerfile`<br>`frontend/nginx.conf`<br>`backend/Dockerfile`<br>`.env.example` |
+| **Practical 12** | **CI/CD Pipeline with GitHub Actions** | Continuous Integration automation with GitHub Actions (`.github/workflows/ci.yml`), multi-job matrix pipeline (Backend tests & Frontend build/tests), reproducible dependency installation via `npm ci`, zero-credential isolated unit testing with Node built-in test runner (`node:test`), and build verification. | `.github/workflows/ci.yml`<br>`backend/tests/`<br>`frontend/tests/`<br>`backend/package.json`<br>`frontend/package.json` |
 
 ---
 
@@ -530,6 +532,156 @@ docker compose down
 | **Port 5000 or 5173 already in use** | A local Node server or Vite dev server is running on host. | Stop local Node processes: `Get-Process node \| Stop-Process`. |
 | **`querySrv ECONNREFUSED` on Atlas SRV** | Local or corporate DNS does not support SRV records. | `backend/db.js` automatically configures Google DNS `8.8.8.8` to resolve Atlas SRV endpoints. |
 | **Browser API requests fail with Network Error** | Frontend bundle was built pointing to Docker internal hostname. | The client browser runs on the host machine. Ensure `VITE_API_BASE_URL` is set to `http://localhost:5000`. |
+
+---
+
+## 🚀 Practical 12: CI/CD Pipeline with GitHub Actions
+
+### 1. Overview & Architecture
+
+AWDF Practical 12 implements an automated **Continuous Integration (CI) Pipeline** using **GitHub Actions** defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). The pipeline automatically verifies code quality, installs dependencies reproducibly via `npm ci`, executes automated unit/integration test suites, and validates production builds on every push and pull request.
+
+```text
+                                GitHub Actions CI Workflow (.github/workflows/ci.yml)
+                           ┌─────────────────────────────────────────────────────────────┐
+                           │ Triggers: Push to main | Pull Request to main              │
+                           └──────────────────────────────┬──────────────────────────────┘
+                                                          │
+                               ┌──────────────────────────┴──────────────────────────┐
+                               ▼                                                     ▼
+                ┌──────────────────────────────┐                      ┌──────────────────────────────┐
+                │        Job: backend          │                      │        Job: frontend         │
+                ├──────────────────────────────┤                      ├──────────────────────────────┤
+                │ 1. Checkout repository       │                      │ 1. Checkout repository       │
+                │ 2. Setup Node.js 20.x        │                      │ 2. Setup Node.js 20.x        │
+                │ 3. npm ci (backend)          │                      │ 3. npm ci (frontend)         │
+                │ 4. npm test (node:test)      │                      │ 4. npm test (node:test)      │
+                │    - Health endpoints (/api) │                      │    - Config & dependencies   │
+                │    - In-Memory Cache (P9)    │                      │    - Nginx & SPA routing     │
+                │    - EventEmitter (P10)      │                      │ 5. npm run build (Vite)      │
+                │    - Input validation & auth │                      │    - Production JS/CSS bundle│
+                └──────────────┬───────────────┘                      └──────────────┬───────────────┘
+                               │                                                     │
+                               └──────────────────────────┬──────────────────────────┘
+                                                          ▼
+                                            GitHub Workflow Run Result:
+                                            ✅ PASS / ❌ FAIL Status
+```
+
+### 2. Workflow Trigger Events
+
+The workflow runs automatically on:
+- **Pushes** to the `main` branch:
+  ```yaml
+  on:
+    push:
+      branches: [ main ]
+  ```
+- **Pull Requests** targeting the `main` branch:
+  ```yaml
+  on:
+    pull_request:
+      branches: [ main ]
+  ```
+- **Concurrency Control:** Cancels in-progress runs on the same branch when new commits are pushed, preventing stale runs and saving CI runner minutes.
+
+### 3. Pipeline Jobs
+
+1. **`backend` Job (`Backend CI (Node.js & Tests)`):**
+   - **Environment:** Ubuntu Latest (`ubuntu-latest`) with Node.js 20.x.
+   - **Dependency Installation:** `npm ci` with npm dependency caching using `backend/package-lock.json`.
+   - **Automated Testing:** Runs `npm test` using Node.js's native test runner (`node:test` & `node:assert`).
+   - **Zero-Credential Isolation:** Runs in `NODE_ENV=test` with zero external database connection required. Neither MongoDB Atlas credentials nor JWT production secrets are ever required or exposed in the runner.
+   - **Test Suites Covered:**
+     - `health.test.js`: Validates `/health` and `/api/health` status 200 responses and JSON structure.
+     - `cache.test.js`: Validates Practical 9 cache key generation, TTL, item/list invalidation, and hit ratio metrics.
+     - `events.test.js`: Validates Practical 10 `taskEvents` EventEmitter singleton, `task-created`, and `task-deleted` event payload dispatch.
+     - `middleware.test.js`: Validates REST API request validation (`validateTaskId`, `validateTaskInput`, `validateRegisterInput`, `requireJsonContent`).
+
+2. **`frontend` Job (`Frontend CI (Build & Tests)`):**
+   - **Environment:** Ubuntu Latest (`ubuntu-latest`) with Node.js 20.x.
+   - **Dependency Installation:** `npm ci` with npm dependency caching using `frontend/package-lock.json`.
+   - **Automated Testing:** Runs `npm test` to verify `package.json` dependencies, `index.html` structure, and `nginx.conf` SPA fallback routing.
+   - **Production Build Verification:** Runs `npm run build` using Vite, ensuring all 248 React components, styles, and assets compile cleanly with zero syntax or bundling errors.
+
+---
+
+### 4. How to Run Tests Locally
+
+You can run the same automated tests locally before committing or pushing:
+
+#### Run Backend Tests
+```powershell
+cd backend
+npm test
+```
+*Expected output:*
+```text
+✔ Practical 9: In-Memory Caching (node-cache)
+✔ Practical 10: Event-Driven Architecture (EventEmitter)
+✔ Health Check API Endpoints
+✔ REST API Validation Middlewares
+ℹ tests 18
+ℹ pass 18
+ℹ fail 0
+```
+
+#### Run Frontend Tests & Build
+```powershell
+cd ../frontend
+npm test
+npm run build
+```
+*Expected output:*
+```text
+✔ Frontend Architecture and Production Configuration
+ℹ tests 3
+ℹ pass 3
+ℹ fail 0
+✓ built in 2.17s
+```
+
+---
+
+### 5. Viewing Workflow Results on GitHub
+
+1. Push your changes to GitHub: `git push origin main`.
+2. Navigate to your repository: [https://github.com/SumanKamti/AWDF-Practicals](https://github.com/SumanKamti/AWDF-Practicals).
+3. Click the **Actions** tab at the top: [https://github.com/SumanKamti/AWDF-Practicals/actions](https://github.com/SumanKamti/AWDF-Practicals/actions).
+4. Select the latest run of **CI Pipeline** to inspect live logs, job steps, and test execution results.
+
+---
+
+### 6. Laboratory Requirement: Demonstrating Failed and Passing Runs
+
+To satisfy the AWDF Practical 12 university syllabus requirement (demonstrating a failed pipeline run followed by a corrected passing run):
+
+#### Step A: Trigger a Deliberate Test Failure
+1. In `backend/tests/health.test.js`, temporarily change line 31:
+   ```javascript
+   // Change expected status from 200 to 500:
+   assert.strictEqual(res.status, 500); // Deliberate failure
+   ```
+2. Commit and push:
+   ```powershell
+   git add backend/tests/health.test.js
+   git commit -m "test(p12): trigger deliberate test failure for CI demonstration"
+   git push origin main
+   ```
+3. Open GitHub Actions tab. Observe the workflow fails with a red cross ❌. Click into `backend` job to capture **Screenshot 1: Failed Pipeline Run** showing the assertion error.
+
+#### Step B: Restore and Demonstrate Passing Pipeline
+1. In `backend/tests/health.test.js`, restore line 31:
+   ```javascript
+   assert.strictEqual(res.status, 200); // Corrected passing test
+   ```
+2. Commit and push:
+   ```powershell
+   git add backend/tests/health.test.js
+   git commit -m "fix(p12): restore correct status assertion to pass CI pipeline"
+   git push origin main
+   ```
+3. Open GitHub Actions tab. Observe both `backend` and `frontend` jobs pass with green checkmarks ✅. Capture **Screenshot 2: Successful Corrected Pipeline Run**.
 
 ---
 
