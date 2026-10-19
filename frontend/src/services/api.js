@@ -163,18 +163,46 @@ export async function getTasks() {
 }
 
 /**
- * POST /tasks - Create a new task (Protected)
- * All tasks start as 'incomplete'
+ * POST /api/ai/generate-description - Generate task description using Google Gemini AI (Practical 13)
  * @param {string} title
- * @param {string} status - 'incomplete' | 'ongoing' | 'complete'
+ * @param {number|string|null} taskId
  */
-export async function createTask(title, status = "incomplete") {
+export async function generateTaskDescription(title, taskId = null) {
+  const response = await fetch(`${BASE_URL}/api/ai/generate-description`, {
+    method: "POST",
+    headers: getAuthHeaders({
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify({ title, taskId }),
+  });
+  return handleResponse(response);
+}
+
+/**
+ * POST /tasks - Create a new task (Protected)
+ * Supports optional description from AI or manual input
+ * @param {string} title
+ * @param {string} descriptionOrStatus - description string OR status string (backwards compatible)
+ * @param {string} maybeStatus - 'incomplete' | 'ongoing' | 'complete'
+ */
+export async function createTask(title, descriptionOrStatus = "", maybeStatus = "incomplete") {
+  let description = "";
+  let status = "incomplete";
+
+  const validStatuses = ["incomplete", "ongoing", "complete"];
+  if (validStatuses.includes(descriptionOrStatus)) {
+    status = descriptionOrStatus;
+  } else {
+    description = descriptionOrStatus;
+    status = maybeStatus;
+  }
+
   const response = await fetch(`${BASE_URL}/tasks`, {
     method: "POST",
     headers: getAuthHeaders({
       "Content-Type": "application/json",
     }),
-    body: JSON.stringify({ title, status }),
+    body: JSON.stringify({ title, description, status }),
   });
   return handleResponse(response);
 }

@@ -30,6 +30,7 @@ const taskSchema = new mongoose.Schema(
   {
     id: { type: Number, unique: true, required: true },
     title: { type: String, required: true, trim: true },
+    description: { type: String, trim: true, default: "" },
     status: {
       type: String,
       enum: ["ongoing", "complete", "incomplete"],

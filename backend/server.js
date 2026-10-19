@@ -19,6 +19,13 @@ const {
 // Practical 10: Event-Driven Architecture with EventEmitter
 require("./listeners");
 const taskEvents = require("./events");
+// Practical 13: Google Gemini AI Integration & Rate Limiting
+const {
+  generateTaskDescription,
+  checkRateLimit,
+  recordRateLimit,
+  clearRateLimit,
+} = require("./ai");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -147,8 +154,10 @@ const validateTaskInput = (req, res, next) => {
     return res.status(400).json({ error: "Task title is required" });
   }
 
+  const description = req.body.description !== undefined ? String(req.body.description || "").trim() : "";
+
   // All newly created tasks must start with 'incomplete' status
-  req.taskInput = { title, status: "incomplete" };
+  req.taskInput = { title, description, status: "incomplete" };
   next();
 };
 
@@ -760,7 +769,7 @@ app.get(["/tasks/:id", "/api/tasks/:id"], authMiddleware, validateTaskId, async 
 // POST /tasks - Create a new task (Protected + Input Validated + Cache Invalidated)
 app.post(["/tasks", "/api/tasks"], authMiddleware, validateTaskInput, async (req, res, next) => {
   try {
-    const { title, status } = req.taskInput;
+    const { title, description, status } = req.taskInput;
     const userId = req.user.id;
     const userName = req.user.name || req.user.email;
 
@@ -770,6 +779,7 @@ app.post(["/tasks", "/api/tasks"], authMiddleware, validateTaskInput, async (req
     const newTask = new Task({
       id: nextId,
       title,
+      description: description || "",
       status,
       userId,
       createdAt: new Date(),
@@ -794,6 +804,7 @@ app.post(["/tasks", "/api/tasks"], authMiddleware, validateTaskInput, async (req
     res.status(201).json({
       id: newTask.id,
       title: newTask.title,
+      description: newTask.description || "",
       status: newTask.status,
       createdAt: newTask.createdAt,
       updatedAt: newTask.updatedAt,
@@ -836,6 +847,14 @@ app.put(["/tasks/:id", "/api/tasks/:id"], authMiddleware, validateTaskId, async 
       }
     }
 
+    if (req.body.description !== undefined) {
+      const desc = String(req.body.description || "").trim();
+      if (task.description !== desc) {
+        changes.push(`description updated`);
+        task.description = desc;
+      }
+    }
+
     if (req.body.status !== undefined) {
       const validStatuses = ["ongoing", "complete", "incomplete"];
       if (validStatuses.includes(req.body.status) && task.status !== req.body.status) {
@@ -856,6 +875,7 @@ app.put(["/tasks/:id", "/api/tasks/:id"], authMiddleware, validateTaskId, async 
     res.status(200).json({
       id: task.id,
       title: task.title,
+      description: task.description || "",
       status: task.status,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
@@ -895,6 +915,69 @@ app.delete(["/tasks/:id", "/api/tasks/:id"], authMiddleware, validateTaskId, asy
   }
 });
 
+// ==========================================
+// 🤖 PRACTICAL 13: GEMINI AI API INTEGRATION
+// ==========================================
+
+// POST /api/ai/generate-description - Generate concise task description using Google Gemini AI
+app.post(
+  ["/api/ai/generate-description", "/ai/generate-description"],
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      const title = String(req.body.title || "").trim();
+      if (!title) {
+        return res.status(400).json({
+          error: "Task title is required to generate an AI description",
+          code: "INVALID_TITLE",
+        });
+      }
+
+      const userId = req.user.id;
+      const taskId = req.body.taskId || null;
+
+      // Rate Limiting: 1 request per task / title per minute
+      const { limited, key, secondsRemaining } = checkRateLimit(userId, title, taskId);
+      if (limited) {
+        return res.status(429).json({
+          error: `Rate limit exceeded. You can generate an AI description once per minute per task. Please wait ${secondsRemaining}s before requesting again.`,
+          code: "AI_RATE_LIMIT",
+          retryAfter: secondsRemaining,
+        });
+      }
+
+      // Record rate limit key before dispatch
+      recordRateLimit(key);
+
+      try {
+        const result = await generateTaskDescription(title);
+        const userName = req.user.name || req.user.email;
+        await logActivity(
+          "AI_GENERATE",
+          `Generated AI description for task: "${title.slice(0, 40)}"`,
+          userName,
+          userId
+        );
+
+        return res.status(200).json({
+          success: true,
+          description: result.description,
+          disclaimer: result.disclaimer,
+        });
+      } catch (aiError) {
+        // Clear rate limit on error so user is not penalized for failures
+        clearRateLimit(key);
+        return res.status(aiError.status || 500).json({
+          error: aiError.message || "Failed to generate AI description",
+          code: aiError.code || "AI_GENERATION_FAILED",
+        });
+      }
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // Global Error Handlers
 app.use((req, res, next) => {
   const error = new Error("Route not found");
@@ -916,6 +999,7 @@ if (require.main === module) {
     console.log(`🔒 JWT Authentication & Middleware Pipeline active`);
     console.log(`⚡ Practical 10: Event-Driven Architecture (EventEmitter) active`);
     console.log(`🐳 Practical 11: Docker Containerized Environment (MongoDB Atlas Cloud) active`);
+    console.log(`🤖 Practical 13: Google Gemini AI Integration & Rate Limiting active`);
   });
 }
 
@@ -927,4 +1011,5 @@ module.exports = {
   validateLoginInput,
   requireJsonContent,
   authMiddleware,
+  generateTaskDescription,
 };

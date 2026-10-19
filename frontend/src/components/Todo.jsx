@@ -6,11 +6,14 @@ import {
   faFilePdf,
   faHistory,
   faSpinner,
+  faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
 
 function Todo({
   taskText,
   setTaskText,
+  taskDescription = "",
+  setTaskDescription = () => {},
   taskStatus,
   setTaskStatus,
   onSubmit,
@@ -28,6 +31,10 @@ function Todo({
   submitting = false,
   deletingId = null,
   updatingStatusId = null,
+  onGenerateAI = () => {},
+  generatingAI = false,
+  aiError = "",
+  aiDisclaimer = "",
 }) {
   const counts = {
     all: tasks.length,
@@ -122,23 +129,69 @@ function Todo({
         </div>
       </div>
 
-      {/* Modern Add / Edit Form Bar */}
-      <form className="modern-task-form" onSubmit={onSubmit}>
-        <div className="form-input-wrapper">
-          <input
-            type="text"
-            value={taskText}
-            onChange={(e) => setTaskText(e.target.value)}
-            placeholder="Write a task (e.g. Implement React + Node + MongoDB)..."
-            disabled={submitting}
-          />
+      {/* Modern Add / Edit Form Card with Gemini AI Integration */}
+      <form className="modern-task-form-card" onSubmit={onSubmit}>
+        <div className="task-form-fields">
+          <div className="form-input-wrapper">
+            <input
+              type="text"
+              value={taskText}
+              onChange={(e) => setTaskText(e.target.value)}
+              placeholder="Task title (e.g. Implement React + Node + MongoDB)..."
+              disabled={submitting || generatingAI}
+            />
+          </div>
+
+          <div className="form-description-wrapper">
+            <div className="description-header-row">
+              <label className="description-label">Task Description</label>
+              <button
+                type="button"
+                className="ai-generate-btn"
+                onClick={onGenerateAI}
+                disabled={generatingAI || submitting || !taskText.trim()}
+                title="Generate concise description using Google Gemini AI"
+              >
+                {generatingAI ? (
+                  <>
+                    <FontAwesomeIcon icon={faSpinner} spin /> Generating with AI...
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faWandMagicSparkles} /> Generate Description with AI
+                  </>
+                )}
+              </button>
+            </div>
+
+            <textarea
+              className="task-description-textarea"
+              rows={2}
+              value={taskDescription}
+              onChange={(e) => setTaskDescription(e.target.value)}
+              placeholder="Enter task description, or click 'Generate Description with AI'..."
+              disabled={submitting || generatingAI}
+            />
+
+            {aiDisclaimer && (
+              <div className="ai-disclaimer-note">
+                <FontAwesomeIcon icon={faWandMagicSparkles} /> {aiDisclaimer}
+              </div>
+            )}
+
+            {aiError && (
+              <div className="ai-error-banner">
+                <span>⚠️ {aiError}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="form-buttons-wrapper">
           <button
             type="submit"
             className="modern-submit-btn"
-            disabled={submitting || !taskText.trim()}
+            disabled={submitting || generatingAI || !taskText.trim()}
           >
             {submitting ? (
               <>
@@ -160,7 +213,7 @@ function Todo({
               type="button"
               className="modern-cancel-btn"
               onClick={onCancel}
-              disabled={submitting}
+              disabled={submitting || generatingAI}
             >
               Cancel
             </button>
@@ -185,8 +238,13 @@ function Todo({
             return (
               <div key={task.id} className={`modern-task-card card-status-${status}`}>
                 <div className="task-left-section">
-                  <span className="modern-id-tag">#{task.id}</span>
-                  <span className="modern-task-title">{task.title}</span>
+                  <div className="task-title-line">
+                    <span className="modern-id-tag">#{task.id}</span>
+                    <span className="modern-task-title">{task.title}</span>
+                  </div>
+                  {task.description && (
+                    <p className="modern-task-desc">{task.description}</p>
+                  )}
                 </div>
 
                 <div className="task-right-section">

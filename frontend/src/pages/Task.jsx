@@ -13,7 +13,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import Todo from "../components/Todo";
 import { useAuth } from "../context/AuthContext";
-import { getTasks, createTask, updateTask, deleteTask, getLogs } from "../services/api";
+import {
+  getTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+  getLogs,
+  generateTaskDescription,
+} from "../services/api";
 import { exportTasksToPDF } from "../utils/pdfExport";
 
 // Practical 8: Lazy load heavy audit trail panel component
@@ -24,6 +31,7 @@ function Task() {
 
   const [tasks, setTasks] = useState([]);
   const [taskText, setTaskText] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
   const [taskStatus, setTaskStatus] = useState("incomplete");
   const [editingId, setEditingId] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
@@ -32,6 +40,11 @@ function Task() {
   const [deletingId, setDeletingId] = useState(null);
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
   const [error, setError] = useState("");
+
+  // Practical 13: Gemini AI State
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiDisclaimer, setAiDisclaimer] = useState("");
 
   // Activity Logs State
   const [logs, setLogs] = useState([]);
@@ -95,6 +108,45 @@ function Task() {
     }
   }, [showLogs, isAuthenticated, loadLogsData]);
 
+  // Practical 13: Generate Task Description using Gemini AI
+  const handleGenerateAI = async () => {
+    const trimmedTitle = taskText.trim();
+    if (!trimmedTitle) {
+      Swal.fire({
+        icon: "warning",
+        title: "Title Required",
+        text: "Please enter a task title first so Gemini AI can generate a relevant description.",
+      });
+      return;
+    }
+
+    setGeneratingAI(true);
+    setAiError("");
+    setAiDisclaimer("");
+
+    try {
+      const data = await generateTaskDescription(trimmedTitle, editingId);
+      if (data && data.description) {
+        setTaskDescription(data.description);
+        setAiDisclaimer(
+          data.disclaimer || "AI-generated suggestion. Please review and edit before saving."
+        );
+        showToast("AI description generated!", "success");
+      }
+    } catch (err) {
+      const msg = err.message || "Failed to generate AI description";
+      setAiError(msg);
+      Swal.fire({
+        icon: "error",
+        title: "AI Generation",
+        text: msg,
+        footer: "You can continue and write a description manually.",
+      });
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
   // Submit Handler
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -105,15 +157,24 @@ function Task() {
     setError("");
 
     try {
+      const trimmedDescription = taskDescription.trim();
+
       if (editingId !== null) {
         const updated = await updateTask(editingId, {
           title: trimmedText,
+          description: trimmedDescription,
         });
 
         setTasks((prev) =>
           prev.map((t) =>
             t.id === editingId
-              ? { ...t, title: updated.title, status: updated.status, updatedAt: updated.updatedAt }
+              ? {
+                  ...t,
+                  title: updated.title,
+                  description: updated.description,
+                  status: updated.status,
+                  updatedAt: updated.updatedAt,
+                }
               : t
           )
         );
@@ -121,14 +182,20 @@ function Task() {
         showToast("Task updated!", "success");
         setEditingId(null);
         setTaskText("");
+        setTaskDescription("");
+        setAiDisclaimer("");
+        setAiError("");
         setTaskStatus("incomplete");
       } else {
         // All new tasks automatically start as "incomplete"
-        const created = await createTask(trimmedText, "incomplete");
+        const created = await createTask(trimmedText, trimmedDescription, "incomplete");
         setTasks((prev) => [...prev, created]);
 
         showToast("Task created!", "success");
         setTaskText("");
+        setTaskDescription("");
+        setAiDisclaimer("");
+        setAiError("");
         setTaskStatus("incomplete");
       }
 
@@ -186,8 +253,11 @@ function Task() {
       return;
     }
     setTaskText(task.title);
+    setTaskDescription(task.description || "");
     setTaskStatus(task.status || "incomplete");
     setEditingId(task.id);
+    setAiError("");
+    setAiDisclaimer("");
     setError("");
   };
 
@@ -217,6 +287,9 @@ function Task() {
       if (editingId === id) {
         setEditingId(null);
         setTaskText("");
+        setTaskDescription("");
+        setAiError("");
+        setAiDisclaimer("");
         setTaskStatus("incomplete");
       }
 
@@ -232,6 +305,9 @@ function Task() {
 
   const handleCancelEdit = () => {
     setTaskText("");
+    setTaskDescription("");
+    setAiError("");
+    setAiDisclaimer("");
     setTaskStatus("incomplete");
     setEditingId(null);
   };
@@ -407,6 +483,8 @@ function Task() {
           <Todo
             taskText={taskText}
             setTaskText={setTaskText}
+            taskDescription={taskDescription}
+            setTaskDescription={setTaskDescription}
             taskStatus={taskStatus}
             setTaskStatus={setTaskStatus}
             onSubmit={handleSubmit}
@@ -424,6 +502,10 @@ function Task() {
             submitting={submitting}
             deletingId={deletingId}
             updatingStatusId={updatingStatusId}
+            onGenerateAI={handleGenerateAI}
+            generatingAI={generatingAI}
+            aiError={aiError}
+            aiDisclaimer={aiDisclaimer}
           />
 
           {loading && (
