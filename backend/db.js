@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const dns = require("dns");
+const net = require("net");
 require("dotenv").config({ path: process.env.DOTENV_CONFIG_PATH || undefined });
 
 // User Schema for JWT authentication, bcrypt password hashing & Google OAuth
@@ -87,10 +88,89 @@ async function seedInitialData() {
   }
 }
 
+/**
+ * Validate whether a string is a valid IPv4 or IPv6 address (with optional port).
+ */
+function isValidDnsAddress(address) {
+  if (typeof address !== "string") return false;
+  const trimmed = address.trim();
+  if (!trimmed) return false;
+
+  // Bracketed IPv6 format with optional port: [2001:db8::1] or [2001:db8::1]:53
+  if (trimmed.startsWith("[") && trimmed.includes("]")) {
+    const closingBracket = trimmed.indexOf("]");
+    const ip = trimmed.slice(1, closingBracket);
+    const rest = trimmed.slice(closingBracket + 1);
+    if (rest && !/^:\d+$/.test(rest)) return false;
+    if (rest) {
+      const port = Number(rest.slice(1));
+      if (port < 1 || port > 65535) return false;
+    }
+    return net.isIP(ip) === 6;
+  }
+
+  // IPv4 format with optional port: 1.2.3.4 or 1.2.3.4:53
+  if (trimmed.includes(":") && !trimmed.includes("::") && trimmed.split(":").length === 2) {
+    const [ip, port] = trimmed.split(":");
+    if (!/^\d+$/.test(port)) return false;
+    const portNum = Number(port);
+    if (portNum < 1 || portNum > 65535) return false;
+    return net.isIP(ip) === 4;
+  }
+
+  // Plain IPv4 or IPv6
+  return net.isIP(trimmed) !== 0;
+}
+
+/**
+ * Configure DNS resolution.
+ * By default, prefers the platform's default resolver.
+ * When DNS_SERVERS is explicitly provided (e.g. "8.8.8.8,8.8.4.4" for Alpine Docker),
+ * validates the addresses and applies those servers safely.
+ */
+function configureDns(serverList = process.env.DNS_SERVERS) {
+  if (serverList !== undefined && serverList !== null) {
+    const raw = String(serverList).trim();
+    if (raw.length > 0) {
+      const servers = raw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      if (servers.length > 0) {
+        const invalidServers = servers.filter((s) => !isValidDnsAddress(s));
+        if (invalidServers.length > 0) {
+          const err = new Error(
+            `Invalid DNS_SERVERS configured: [${invalidServers.join(", ")}]. Must be valid IPv4 or IPv6 addresses.`
+          );
+          err.code = "INVALID_DNS_SERVERS";
+          throw err;
+        }
+
+        try {
+          dns.setServers(servers);
+        } catch (setErr) {
+          const err = new Error(`Failed to set DNS servers [${servers.join(", ")}]: ${setErr.message}`);
+          err.code = "DNS_CONFIG_FAILED";
+          throw err;
+        }
+        return servers;
+      }
+    }
+  }
+  return dns.getServers();
+}
+
 // Connect to MongoDB Atlas (Cloud Only)
 async function connectDB() {
-  // Force Node.js to use Google DNS for SRV queries (prevents querySrv ECONNREFUSED in Docker Alpine)
-  dns.setServers(["8.8.8.8", "8.8.4.4"]);
+  // Prefer the platform's default resolver; apply custom DNS only if explicitly set via DNS_SERVERS
+  try {
+    configureDns();
+  } catch (dnsErr) {
+    console.error(`❌ FATAL DNS CONFIGURATION ERROR: ${dnsErr.message}`);
+    process.exit(1);
+  }
+
   const cloudURI = (process.env.MONGODB_URI || process.env.CLOUD_DB_URI || "").trim();
 
   if (!cloudURI) {
@@ -123,4 +203,6 @@ module.exports = {
   Task,
   ActivityLog,
   connectDB,
+  configureDns,
+  isValidDnsAddress,
 };

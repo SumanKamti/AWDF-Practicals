@@ -7,7 +7,6 @@ import {
   faSpinner,
   faUser,
   faCommentDots,
-  faLock,
   faCheckCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import Swal from "sweetalert2";
@@ -98,11 +97,11 @@ function Contact() {
         confirmButtonColor: "#2563eb",
       });
 
-      setFormData((prev) => ({
+      setFormData({
         name: isAuthenticated && user?.name ? user.name : "",
         email: isAuthenticated && user?.email ? user.email : "",
         message: "",
-      }));
+      });
     } catch (err) {
       const errText = err.message || "Failed to deliver your message. Please try again.";
       setErrorMessage(errText);

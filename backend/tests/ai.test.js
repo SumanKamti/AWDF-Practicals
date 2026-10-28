@@ -1,9 +1,10 @@
-const { test, describe, beforeEach } = require("node:test");
+const { test, describe, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert");
 
 process.env.NODE_ENV = "test";
 const {
   generateTaskDescription,
+  getResolvedModel,
   checkRateLimit,
   recordRateLimit,
   clearRateLimit,
@@ -94,6 +95,50 @@ describe("Practical 13: Google Gemini AI Integration & Rate Limiting", () => {
           return true;
         }
       );
+    });
+  });
+
+  describe("Model resolution and configuration", () => {
+    const originalEnvModel = process.env.GEMINI_MODEL;
+
+    afterEach(() => {
+      if (originalEnvModel !== undefined) {
+        process.env.GEMINI_MODEL = originalEnvModel;
+      } else {
+        delete process.env.GEMINI_MODEL;
+      }
+    });
+
+    test("defaults to gemini-3.8-flash when neither option nor env is set", () => {
+      delete process.env.GEMINI_MODEL;
+      assert.strictEqual(getResolvedModel(), "gemini-3.8-flash");
+    });
+
+    test("prioritizes process.env.GEMINI_MODEL over default fallback", () => {
+      process.env.GEMINI_MODEL = "gemini-2.5-flash";
+      assert.strictEqual(getResolvedModel(), "gemini-2.5-flash");
+    });
+
+    test("prioritizes options.modelName over process.env.GEMINI_MODEL", () => {
+      process.env.GEMINI_MODEL = "gemini-3.8-flash";
+      assert.strictEqual(
+        getResolvedModel({ modelName: "custom-gemini-model" }),
+        "custom-gemini-model"
+      );
+    });
+
+    test("generateTaskDescription passes resolved model to generator", async () => {
+      let passedModel = null;
+      await generateTaskDescription("Test Model Passing", {
+        apiKey: "dummy-key",
+        modelName: "test-model-identifier",
+        mockGenerator: async (title, model) => {
+          passedModel = model;
+          return { description: "Test description" };
+        },
+      });
+
+      assert.strictEqual(passedModel, "test-model-identifier");
     });
   });
 

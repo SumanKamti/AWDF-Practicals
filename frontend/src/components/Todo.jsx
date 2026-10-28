@@ -14,8 +14,6 @@ function Todo({
   setTaskText,
   taskDescription = "",
   setTaskDescription = () => {},
-  taskStatus,
-  setTaskStatus,
   onSubmit,
   editing,
   onCancel,

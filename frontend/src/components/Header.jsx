@@ -4,9 +4,7 @@ import {
   faArrowRight,
   faEnvelope,
   faTasks,
-  faCode,
   faFolderOpen,
-  faCheckCircle,
 } from "@fortawesome/free-solid-svg-icons";
 
 function Header() {

@@ -2,12 +2,14 @@ const { test, describe } = require("node:test");
 const assert = require("node:assert");
 
 process.env.NODE_ENV = "test";
+const jwt = require("jsonwebtoken");
 const {
   validateTaskId,
   validateTaskInput,
   validateRegisterInput,
   validateLoginInput,
   requireJsonContent,
+  authMiddleware,
 } = require("../server");
 
 function createMockResponse() {
@@ -152,6 +154,68 @@ describe("REST API Validation Middlewares", () => {
       assert.strictEqual(nextCalled, false);
       assert.strictEqual(res.statusCode, 400);
       assert.strictEqual(res.body.error, "Password must be at least 6 characters long");
+    });
+  });
+
+  describe("authMiddleware", () => {
+    const testSecret = process.env.JWT_SECRET || "fallback_task_secret_key_jwt_2026";
+
+    test("rejects request when no Authorization header is provided with HTTP 401", () => {
+      const req = { headers: {} };
+      const res = createMockResponse();
+      let nextCalled = false;
+
+      authMiddleware(req, res, () => {
+        nextCalled = true;
+      });
+
+      assert.strictEqual(nextCalled, false);
+      assert.strictEqual(res.statusCode, 401);
+      assert.match(res.body.error, /Expected 'Authorization: Bearer <token>'/);
+    });
+
+    test("rejects request when token is passed exclusively via query parameter ?token=...", () => {
+      const validToken = jwt.sign({ id: "user123" }, testSecret);
+      const req = { headers: {}, query: { token: validToken } };
+      const res = createMockResponse();
+      let nextCalled = false;
+
+      authMiddleware(req, res, () => {
+        nextCalled = true;
+      });
+
+      assert.strictEqual(nextCalled, false);
+      assert.strictEqual(res.statusCode, 401);
+      assert.match(res.body.error, /Expected 'Authorization: Bearer <token>'/);
+    });
+
+    test("rejects invalid Bearer token with HTTP 401", () => {
+      const req = { headers: { authorization: "Bearer invalid.token.value" } };
+      const res = createMockResponse();
+      let nextCalled = false;
+
+      authMiddleware(req, res, () => {
+        nextCalled = true;
+      });
+
+      assert.strictEqual(nextCalled, false);
+      assert.strictEqual(res.statusCode, 401);
+      assert.match(res.body.error, /Invalid authentication token/);
+    });
+
+    test("accepts valid Bearer token and attaches user payload", () => {
+      const validToken = jwt.sign({ id: "user123", email: "test@example.com" }, testSecret);
+      const req = { headers: { authorization: `Bearer ${validToken}` } };
+      const res = createMockResponse();
+      let nextCalled = false;
+
+      authMiddleware(req, res, () => {
+        nextCalled = true;
+      });
+
+      assert.strictEqual(nextCalled, true);
+      assert.strictEqual(req.user.id, "user123");
+      assert.strictEqual(req.user.email, "test@example.com");
     });
   });
 });

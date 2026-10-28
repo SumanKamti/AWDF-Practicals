@@ -187,7 +187,7 @@ export async function generateTaskDescription(title, taskId = null) {
  */
 export async function createTask(title, descriptionOrStatus = "", maybeStatus = "incomplete") {
   let description = "";
-  let status = "incomplete";
+  let status;
 
   const validStatuses = ["incomplete", "ongoing", "complete"];
   if (validStatuses.includes(descriptionOrStatus)) {
@@ -247,15 +247,16 @@ export async function getLogs() {
 }
 
 /**
- * Get PDF export download URL with auth token query param
+ * @deprecated Insecure token query parameters are disabled for security reasons.
+ * Client-side PDF generation via exportTasksToPDF in utils/pdfExport.js is the primary export mechanism.
+ * Server endpoint /tasks/export-pdf strictly requires Authorization: Bearer <token>.
  */
 export function getExportPdfUrl() {
-  const token = getAuthToken();
-  return `${BASE_URL}/tasks/export-pdf${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+  return `${BASE_URL}/tasks/export-pdf`;
 }
 
 /**
- * POST /contact - Send contact message directly to Jay
+ * POST /contact - Send contact message to portfolio owner
  * @param {object} param0 { name, email, message }
  */
 export async function sendContactMessage({ name, email, message }) {

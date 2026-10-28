@@ -56,6 +56,17 @@ function resetRateLimits() {
 }
 
 /**
+ * Resolve the Gemini model name to use.
+ * Order of precedence: options.modelName > process.env.GEMINI_MODEL > "gemini-3.8-flash"
+ * @param {object} options
+ * @returns {string}
+ */
+function getResolvedModel(options = {}) {
+  const model = options.modelName || process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  return String(model).trim();
+}
+
+/**
  * Generate a task description with Google Gemini AI
  * @param {string} title - Task title
  * @param {object} options - Optional configuration / mocks for testing
@@ -95,11 +106,12 @@ async function generateTaskDescription(title, options = {}) {
 
   try {
     const generationPromise = (async () => {
+      const modelName = getResolvedModel(options);
+
       if (options.mockGenerator) {
-        return await options.mockGenerator(trimmedTitle);
+        return await options.mockGenerator(trimmedTitle, modelName);
       }
 
-      const modelName = options.modelName || process.env.GEMINI_MODEL || "gemini-2.5-flash";
       const ai = new GoogleGenAI({ apiKey });
 
       const prompt = `You are a helpful task management AI assistant.
@@ -115,7 +127,7 @@ Output only the description text.`;
         contents: prompt,
         config: {
           temperature: 0.4,
-          maxOutputTokens: 150,
+          maxOutputTokens: 500,
         },
       });
 
@@ -147,7 +159,17 @@ Output only the description text.`;
       throw rawError;
     }
 
-    const msg = (rawError.message || "").toLowerCase();
+    let rawMessage = rawError.message || "";
+    try {
+      if (rawMessage.trim().startsWith("{") && rawMessage.includes('"message"')) {
+        const parsed = JSON.parse(rawMessage);
+        if (parsed?.error?.message) {
+          rawMessage = parsed.error.message;
+        }
+      }
+    } catch (_) {}
+
+    const msg = rawMessage.toLowerCase();
     const err = new Error("Failed to generate task description with Gemini AI");
     err.status = 500;
     err.code = "AI_SERVICE_ERROR";
@@ -156,6 +178,10 @@ Output only the description text.`;
       err.message = "Invalid or unauthorized Gemini API key. Please verify your GEMINI_API_KEY in backend/.env.";
       err.status = 401;
       err.code = "AI_AUTH_ERROR";
+    } else if (msg.includes("no longer available") || msg.includes("not_found") || msg.includes("404")) {
+      err.message = "Configured Gemini model is not supported for your account. Please use gemini-3.8-flash in backend/.env.";
+      err.status = 404;
+      err.code = "AI_MODEL_NOT_FOUND";
     } else if (msg.includes("quota") || msg.includes("429") || msg.includes("resource_exhausted")) {
       err.message = "Gemini API rate limit or quota exceeded. Please wait a minute or check your quota.";
       err.status = 429;
@@ -165,7 +191,7 @@ Output only the description text.`;
       err.status = 502;
       err.code = "AI_NETWORK_ERROR";
     } else {
-      err.message = "Gemini AI is temporarily unavailable. You can write your task description manually.";
+      err.message = rawMessage || "Gemini AI is temporarily unavailable. You can write your task description manually.";
     }
 
     throw err;
@@ -174,6 +200,7 @@ Output only the description text.`;
 
 module.exports = {
   generateTaskDescription,
+  getResolvedModel,
   checkRateLimit,
   recordRateLimit,
   clearRateLimit,

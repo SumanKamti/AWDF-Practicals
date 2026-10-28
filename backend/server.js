@@ -4,6 +4,7 @@ const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const PDFDocument = require("pdfkit");
+const mongoose = require("mongoose");
 const { User, Task, ActivityLog } = require("./db");
 const { sendWelcomeEmail, sendOtpEmail, sendContactFormEmails } = require("./mailer");
 const {
@@ -90,8 +91,6 @@ const authMiddleware = (req, res, next) => {
 
   if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.split(" ")[1];
-  } else if (req.query && req.query.token) {
-    token = req.query.token;
   }
 
   if (!token) {
@@ -161,8 +160,47 @@ const validateTaskInput = (req, res, next) => {
   next();
 };
 
+function getAllowedOrigins() {
+  const clientUrlEnv = process.env.CLIENT_URL || "";
+  const parsed = clientUrlEnv
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  if (parsed.length > 0) {
+    return parsed;
+  }
+
+  // Safe defaults for local development/test if CLIENT_URL is not set
+  if (process.env.NODE_ENV !== "production") {
+    return ["http://localhost:5173", "http://localhost:5000", "http://localhost:3000"];
+  }
+
+  return [];
+}
+
 const corsOptions = {
-  origin: process.env.CLIENT_URL || "*",
+  origin: (origin, callback) => {
+    // Allow non-browser requests or same-origin requests without Origin header (curl, health checks, server-to-server)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    const allowed = getAllowedOrigins();
+
+    // In non-production, if explicitly configured with wildcard, permit it
+    if (allowed.includes("*") && process.env.NODE_ENV !== "production") {
+      return callback(null, true);
+    }
+
+    if (allowed.includes(origin)) {
+      return callback(null, true);
+    }
+
+    const corsError = new Error("CORS origin not allowed");
+    corsError.status = 403;
+    return callback(corsError);
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
@@ -174,9 +212,23 @@ app.use(requireJsonContent);
 
 // Health check endpoint (accessible at /health and /api/health)
 app.get(["/health", "/api/health"], (req, res) => {
-  res.status(200).json({
+  const isTestEnv = process.env.NODE_ENV === "test";
+  const readyState = mongoose.connection.readyState;
+  const isConnected = readyState === 1;
+
+  if (!isConnected && !isTestEnv) {
+    return res.status(503).json({
+      status: "degraded",
+      database: "disconnected",
+      readyState,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  return res.status(200).json({
     status: "ok",
-    database: "cloud (MongoDB Atlas)",
+    database: isConnected ? "connected" : "cloud (MongoDB Atlas)",
+    readyState,
     practical: "Practical 11: Docker and Docker Compose (MongoDB Atlas Cloud)",
     timestamp: new Date().toISOString(),
   });
@@ -531,7 +583,7 @@ app.post(["/auth/reset-password", "/api/auth/reset-password"], async (req, res, 
   }
 });
 
-// POST /contact - Send visitor message directly to Jay's email (Public)
+// POST /contact - Send visitor message directly to portfolio owner email (Public)
 app.post(["/contact", "/api/contact"], async (req, res, next) => {
   try {
     const name = String(req.body.name || "").trim();
@@ -544,7 +596,7 @@ app.post(["/contact", "/api/contact"], async (req, res, next) => {
 
     const emailRegex = /^\S+@\S+\.\S+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: "Please enter a valid email address so Jay can reply to you." });
+      return res.status(400).json({ error: "Please enter a valid email address so we can reply to you." });
     }
 
     await logActivity("CONTACT_MESSAGE", `Portfolio message from ${name} (${email})`, name);
@@ -558,7 +610,7 @@ app.post(["/contact", "/api/contact"], async (req, res, next) => {
     }
 
     res.status(200).json({
-      message: "Your message has been sent directly to Jay!",
+      message: "Your message has been sent directly to the portfolio owner!",
       simulated: mailResult.simulated || false,
     });
   } catch (error) {
@@ -1012,4 +1064,6 @@ module.exports = {
   requireJsonContent,
   authMiddleware,
   generateTaskDescription,
+  getAllowedOrigins,
+  corsOptions,
 };

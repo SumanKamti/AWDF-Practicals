@@ -67,6 +67,10 @@ async function sendWelcomeEmail(toEmail, userName = "Student", provider = "Email
 </html>`;
 
   if (!transporter) {
+    if (process.env.NODE_ENV === "production") {
+      console.warn(`⚠️ [EMAIL NOTICE] Welcome email skipped for ${toEmail}: email service is not configured.`);
+      return { success: false, error: "Email delivery service is not configured." };
+    }
     console.log("--------------------------------------------------");
     console.log(`📧 [EMAIL NOTICE] SMTP credentials not set in .env.`);
     console.log(` simulated Welcome email to: ${toEmail} (${userName})`);
@@ -75,9 +79,10 @@ async function sendWelcomeEmail(toEmail, userName = "Student", provider = "Email
   }
 
   try {
+    const fromName = process.env.EMAIL_FROM_NAME || "Portfolio Admin";
     const text = `Hi ${userName},\n\nThank you for creating your account via ${provider === "google" ? "Google" : "Email"}.\nYour personal workspace and activity logs are ready.\n\nTask Manager Portfolio`;
     const info = await transporter.sendMail({
-      from: `"Jay Patel" <${process.env.EMAIL_USER}>`,
+      from: `"${fromName}" <${process.env.EMAIL_USER}>`,
       to: toEmail,
       subject,
       text,
@@ -100,6 +105,7 @@ async function sendWelcomeEmail(toEmail, userName = "Student", provider = "Email
  */
 async function sendOtpEmail(toEmail, userName = "User", otp) {
   const transporter = createTransporter();
+  const fromName = process.env.EMAIL_FROM_NAME || "Portfolio Team";
   const subject = `Task Manager code: ${otp}`;
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -121,13 +127,17 @@ async function sendOtpEmail(toEmail, userName = "User", otp) {
     </div>
     <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">
       Best regards,<br/>
-      Jay Patel
+      ${fromName}
     </p>
   </div>
 </body>
 </html>`;
 
   if (!transporter) {
+    if (process.env.NODE_ENV === "production") {
+      console.error(`⚠️ [EMAIL NOTICE] Password reset failed for ${toEmail}: email service is not configured.`);
+      return { success: false, error: "Email delivery service is not configured." };
+    }
     console.log("==================================================");
     console.log(`🔐 [SIMULATED OTP] Password Reset for: ${toEmail}`);
     console.log(`👉 YOUR 6-DIGIT OTP CODE IS: [ ${otp} ]`);
@@ -137,9 +147,9 @@ async function sendOtpEmail(toEmail, userName = "User", otp) {
   }
 
   try {
-    const text = `Hi ${userName},\n\nHere is your requested code for your Task Manager account: ${otp}\nThis code is valid for 10 minutes.\n\nBest regards,\nJay Patel`;
+    const text = `Hi ${userName},\n\nHere is your requested code for your Task Manager account: ${otp}\nThis code is valid for 10 minutes.\n\nBest regards,\n${fromName}`;
     const info = await transporter.sendMail({
-      from: `"Jay Patel" <${process.env.EMAIL_USER}>`,
+      from: `"${fromName}" <${process.env.EMAIL_USER}>`,
       to: toEmail,
       subject,
       text,
@@ -158,18 +168,26 @@ async function sendOtpEmail(toEmail, userName = "User", otp) {
 }
 
 /**
- * Send Contact Form Message directly to Portfolio Owner (Jay Patel)
- * Includes sender's name and contact email so Jay can reply back to them
+ * Send Contact Form Message directly to Portfolio Owner
+ * Includes sender's name and contact email so recipient can reply back to them
  */
 async function sendContactFormEmails({ name, email, message }) {
   const transporter = createTransporter();
-  const receiverEmail = process.env.EMAIL_USER || "jayyypatelll333@gmail.com";
+  const receiverEmail = (process.env.EMAIL_CONTACT_RECEIVER || process.env.EMAIL_USER || "").trim();
 
-  if (!transporter) {
+  if (!transporter || !receiverEmail) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("⚠️ [EMAIL ERROR] Contact form submission failed: email service is not configured.");
+      return {
+        success: false,
+        error: "Email delivery service is currently not configured.",
+      };
+    }
+
     console.log("==================================================");
-    console.log(`📬 [SIMULATED CONTACT MESSAGE TO JAY]`);
+    console.log("📬 [SIMULATED CONTACT MESSAGE]");
     console.log(`From Visitor: ${name} <${email}>`);
-    console.log(`To: ${receiverEmail}`);
+    console.log(`To: ${receiverEmail || "portfolio-admin@example.com"}`);
     console.log(`Message: ${message}`);
     console.log("==================================================");
     return { success: true, simulated: true };
@@ -215,7 +233,7 @@ ${message}
       },
     });
 
-    console.log(`✉️ Contact message from ${name} (${email}) delivered directly to Jay (${receiverEmail}): ${info.messageId}`);
+    console.log(`✉️ Contact message from ${name} (${email}) delivered directly to recipient (${receiverEmail}): ${info.messageId}`);
     return { success: true, messageId: info.messageId };
   } catch (err) {
     console.error("⚠️ Failed to deliver contact email:", err.message);
@@ -224,6 +242,7 @@ ${message}
 }
 
 module.exports = {
+  createTransporter,
   sendWelcomeEmail,
   sendOtpEmail,
   sendContactFormEmails,

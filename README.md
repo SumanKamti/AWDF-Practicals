@@ -7,7 +7,7 @@ This project is a personal developer portfolio web application built as part of 
 - **Portfolio Showcase:** Multi-page responsive portfolio featuring dynamic GitHub repository integration, contact form with automated email dispatch, and dark/light theme switching.
 - **Task Management:** Secure task dashboard with user-scoped CRUD operations, task locking, status filtering, activity audit trail logging, and client-side PDF export.
 - **Authentication & Security:** User registration and login powered by JWT and bcrypt password hashing, Google OAuth integration, and Nodemailer OTP email verification.
-- **AI Task Assistance:** Automated task description generator using the Google Gen AI SDK (`@google/genai` with `gemini-2.5-flash`), featuring server-side rate limiting (1 request per task per minute), request timeouts, and graceful manual fallback.
+- **AI Task Assistance:** Automated task description generator using the Google Gen AI SDK (`@google/genai` with `gemini-3.8-flash`), featuring server-side rate limiting (1 request per task per minute), request timeouts, and graceful manual fallback.
 - **Performance & Events:** In-memory query caching via `node-cache`, route-level code splitting with `React.lazy`, and decoupled background event notifications using Node.js `EventEmitter`.
 - **DevOps & Automation:** Multi-stage Docker containerization with Nginx reverse proxying, Docker Compose orchestration, and automated test pipelines via GitHub Actions.
 
