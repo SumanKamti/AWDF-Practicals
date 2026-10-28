@@ -5,6 +5,9 @@ process.env.NODE_ENV = "test";
 const {
   generateTaskDescription,
   getResolvedModel,
+  getModelCandidateList,
+  classifyAiError,
+  SUPPORTED_MODELS,
   checkRateLimit,
   recordRateLimit,
   clearRateLimit,
@@ -139,6 +142,146 @@ describe("Practical 13: Google Gemini AI Integration & Rate Limiting", () => {
       });
 
       assert.strictEqual(passedModel, "test-model-identifier");
+    });
+
+    test("getModelCandidateList orders configured model first and includes verified fallbacks", () => {
+      const candidates = getModelCandidateList({ modelName: "gemini-3.8-flash" });
+      assert.deepStrictEqual(candidates, ["gemini-3.8-flash", "gemini-2.5-flash"]);
+
+      const altCandidates = getModelCandidateList({ modelName: "gemini-2.5-flash" });
+      assert.deepStrictEqual(altCandidates, ["gemini-2.5-flash", "gemini-3.8-flash"]);
+    });
+  });
+
+  describe("Model fallback strategy and error resilience", () => {
+    test("automatically falls back to secondary model when primary model hits HTTP 503 high demand", async () => {
+      const attemptedModels = [];
+      const result = await generateTaskDescription("High Demand Task", {
+        apiKey: "valid-mock-key",
+        models: ["gemini-3.8-flash", "gemini-2.5-flash"],
+        mockGenerator: async (title, model) => {
+          attemptedModels.push(model);
+          if (model === "gemini-3.8-flash") {
+            const err = new Error(
+              JSON.stringify({
+                error: {
+                  code: 503,
+                  message: "This model is currently experiencing high demand. Spikes in demand are usually temporary.",
+                  status: "UNAVAILABLE",
+                },
+              })
+            );
+            err.status = 503;
+            throw err;
+          }
+          return { description: "Successfully generated via fallback model" };
+        },
+      });
+
+      assert.deepStrictEqual(attemptedModels, ["gemini-3.8-flash", "gemini-2.5-flash"]);
+      assert.strictEqual(result.model, "gemini-2.5-flash");
+      assert.strictEqual(result.description, "Successfully generated via fallback model");
+    });
+
+    test("automatically falls back to secondary model when primary model returns HTTP 404 model not found", async () => {
+      const attemptedModels = [];
+      const result = await generateTaskDescription("Missing Model Task", {
+        apiKey: "valid-mock-key",
+        models: ["gemini-unknown-model", "gemini-3.8-flash"],
+        mockGenerator: async (title, model) => {
+          attemptedModels.push(model);
+          if (model === "gemini-unknown-model") {
+            const err = new Error("models/gemini-unknown-model is not found for API version v1beta");
+            err.status = 404;
+            throw err;
+          }
+          return { description: "Recovered via standard flash model" };
+        },
+      });
+
+      assert.deepStrictEqual(attemptedModels, ["gemini-unknown-model", "gemini-3.8-flash"]);
+      assert.strictEqual(result.model, "gemini-3.8-flash");
+      assert.strictEqual(result.description, "Recovered via standard flash model");
+    });
+
+    test("fails fast immediately without retrying fallback models when API key is invalid (HTTP 401)", async () => {
+      const attemptedModels = [];
+      await assert.rejects(
+        async () => {
+          await generateTaskDescription("Auth Error Task", {
+            apiKey: "invalid-key-example",
+            models: ["gemini-3.8-flash", "gemini-2.5-flash"],
+            mockGenerator: async (title, model) => {
+              attemptedModels.push(model);
+              const err = new Error("API key not valid. Please pass a valid API key.");
+              err.status = 401;
+              throw err;
+            },
+          });
+        },
+        (err) => {
+          assert.strictEqual(err.status, 401);
+          assert.strictEqual(err.code, "AI_AUTH_ERROR");
+          return true;
+        }
+      );
+
+      // Verify no secondary model attempt was made
+      assert.strictEqual(attemptedModels.length, 1);
+      assert.strictEqual(attemptedModels[0], "gemini-3.8-flash");
+    });
+
+    test("fails fast immediately without retrying fallback models when quota is exhausted (HTTP 429)", async () => {
+      const attemptedModels = [];
+      await assert.rejects(
+        async () => {
+          await generateTaskDescription("Quota Exhausted Task", {
+            apiKey: "valid-key-out-of-quota",
+            models: ["gemini-3.8-flash", "gemini-2.5-flash"],
+            mockGenerator: async (title, model) => {
+              attemptedModels.push(model);
+              const err = new Error("Resource has been exhausted (e.g. check quota).");
+              err.status = 429;
+              throw err;
+            },
+          });
+        },
+        (err) => {
+          assert.strictEqual(err.status, 429);
+          assert.strictEqual(err.code, "AI_QUOTA_EXCEEDED");
+          return true;
+        }
+      );
+
+      // Verify no secondary model attempt was made
+      assert.strictEqual(attemptedModels.length, 1);
+    });
+
+    test("returns safe HTTP 503 error when all candidate models fail with high demand", async () => {
+      const attemptedModels = [];
+      await assert.rejects(
+        async () => {
+          await generateTaskDescription("All Overloaded Task", {
+            apiKey: "valid-mock-key",
+            models: ["gemini-3.8-flash", "gemini-2.5-flash"],
+            mockGenerator: async (title, model) => {
+              attemptedModels.push(model);
+              const err = new Error("This model is currently experiencing high demand.");
+              err.status = 503;
+              throw err;
+            },
+          });
+        },
+        (err) => {
+          assert.strictEqual(err.status, 503);
+          assert.strictEqual(err.code, "AI_HIGH_DEMAND");
+          assert.ok(err.message.includes("experiencing high demand"));
+          return true;
+        }
+      );
+
+      // Verify all candidates were exhausted before reporting failure
+      assert.deepStrictEqual(attemptedModels, ["gemini-3.8-flash", "gemini-2.5-flash"]);
     });
   });
 
