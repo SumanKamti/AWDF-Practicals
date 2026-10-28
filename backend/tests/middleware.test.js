@@ -10,6 +10,7 @@ const {
   validateLoginInput,
   requireJsonContent,
   authMiddleware,
+  JWT_SECRET,
 } = require("../server");
 
 function createMockResponse() {
@@ -158,7 +159,7 @@ describe("REST API Validation Middlewares", () => {
   });
 
   describe("authMiddleware", () => {
-    const testSecret = process.env.JWT_SECRET || "fallback_task_secret_key_jwt_2026";
+    const testSecret = JWT_SECRET;
 
     test("rejects request when no Authorization header is provided with HTTP 401", () => {
       const req = { headers: {} };

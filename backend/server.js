@@ -165,7 +165,7 @@ function getAllowedOrigins() {
   const parsed = clientUrlEnv
     .split(",")
     .map((origin) => origin.trim())
-    .filter(Boolean);
+    .filter((origin) => origin && origin !== "undefined" && origin !== "null");
 
   if (parsed.length > 0) {
     return parsed;
@@ -1066,4 +1066,5 @@ module.exports = {
   generateTaskDescription,
   getAllowedOrigins,
   corsOptions,
+  JWT_SECRET,
 };

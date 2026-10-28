@@ -8,6 +8,14 @@ const {
   sendContactFormEmails,
 } = require("../mailer");
 
+function restoreEnv(key, prevValue) {
+  if (prevValue === undefined) {
+    delete process.env[key];
+  } else {
+    process.env[key] = prevValue;
+  }
+}
+
 describe("Email Delivery & Fallback Security", () => {
   describe("Non-production simulation mode", () => {
     test("sendContactFormEmails simulates delivery without hardcoded fallbacks", async () => {
@@ -28,9 +36,9 @@ describe("Email Delivery & Fallback Security", () => {
         assert.strictEqual(result.success, true);
         assert.strictEqual(result.simulated, true);
       } finally {
-        process.env.NODE_ENV = prevEnv;
-        process.env.EMAIL_USER = prevUser;
-        process.env.EMAIL_PASS = prevPass;
+        restoreEnv("NODE_ENV", prevEnv);
+        restoreEnv("EMAIL_USER", prevUser);
+        restoreEnv("EMAIL_PASS", prevPass);
       }
     });
 
@@ -49,9 +57,9 @@ describe("Email Delivery & Fallback Security", () => {
         assert.strictEqual(result.simulated, true);
         assert.strictEqual(result.otp, "123456");
       } finally {
-        process.env.NODE_ENV = prevEnv;
-        process.env.EMAIL_USER = prevUser;
-        process.env.EMAIL_PASS = prevPass;
+        restoreEnv("NODE_ENV", prevEnv);
+        restoreEnv("EMAIL_USER", prevUser);
+        restoreEnv("EMAIL_PASS", prevPass);
       }
     });
 
@@ -69,9 +77,9 @@ describe("Email Delivery & Fallback Security", () => {
         assert.strictEqual(result.success, true);
         assert.strictEqual(result.simulated, true);
       } finally {
-        process.env.NODE_ENV = prevEnv;
-        process.env.EMAIL_USER = prevUser;
-        process.env.EMAIL_PASS = prevPass;
+        restoreEnv("NODE_ENV", prevEnv);
+        restoreEnv("EMAIL_USER", prevUser);
+        restoreEnv("EMAIL_PASS", prevPass);
       }
     });
   });
@@ -96,9 +104,9 @@ describe("Email Delivery & Fallback Security", () => {
         assert.strictEqual(result.simulated, undefined);
         assert.strictEqual(result.error, "Email delivery service is currently not configured.");
       } finally {
-        process.env.NODE_ENV = prevEnv;
-        process.env.EMAIL_USER = prevUser;
-        process.env.EMAIL_PASS = prevPass;
+        restoreEnv("NODE_ENV", prevEnv);
+        restoreEnv("EMAIL_USER", prevUser);
+        restoreEnv("EMAIL_PASS", prevPass);
       }
     });
 
@@ -117,9 +125,9 @@ describe("Email Delivery & Fallback Security", () => {
         assert.strictEqual(result.simulated, undefined);
         assert.strictEqual(result.error, "Email delivery service is not configured.");
       } finally {
-        process.env.NODE_ENV = prevEnv;
-        process.env.EMAIL_USER = prevUser;
-        process.env.EMAIL_PASS = prevPass;
+        restoreEnv("NODE_ENV", prevEnv);
+        restoreEnv("EMAIL_USER", prevUser);
+        restoreEnv("EMAIL_PASS", prevPass);
       }
     });
 
@@ -138,9 +146,9 @@ describe("Email Delivery & Fallback Security", () => {
         assert.strictEqual(result.simulated, undefined);
         assert.strictEqual(result.error, "Email delivery service is not configured.");
       } finally {
-        process.env.NODE_ENV = prevEnv;
-        process.env.EMAIL_USER = prevUser;
-        process.env.EMAIL_PASS = prevPass;
+        restoreEnv("NODE_ENV", prevEnv);
+        restoreEnv("EMAIL_USER", prevUser);
+        restoreEnv("EMAIL_PASS", prevPass);
       }
     });
   });

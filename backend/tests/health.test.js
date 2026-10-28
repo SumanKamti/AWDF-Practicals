@@ -6,6 +6,14 @@ process.env.NODE_ENV = "test";
 const { app, getAllowedOrigins } = require("../server");
 const { configureDns } = require("../db");
 
+function restoreEnv(key, prevValue) {
+  if (prevValue === undefined) {
+    delete process.env[key];
+  } else {
+    process.env[key] = prevValue;
+  }
+}
+
 describe("Health Check API Endpoints & Production Infrastructure", () => {
   let server;
   let baseUrl;
@@ -61,7 +69,7 @@ describe("Health Check API Endpoints & Production Infrastructure", () => {
         assert.strictEqual(body.database, "connected");
         assert.strictEqual(body.readyState, 1);
       } finally {
-        process.env.NODE_ENV = prevEnv;
+        restoreEnv("NODE_ENV", prevEnv);
         Object.defineProperty(mongoose.connection, "readyState", { value: prevReadyState, configurable: true });
       }
     });
@@ -86,7 +94,7 @@ describe("Health Check API Endpoints & Production Infrastructure", () => {
         assert.ok(!rawJson.includes("mongodb+srv"));
         assert.ok(!rawJson.includes("password"));
       } finally {
-        process.env.NODE_ENV = prevEnv;
+        restoreEnv("NODE_ENV", prevEnv);
         Object.defineProperty(mongoose.connection, "readyState", { value: prevReadyState, configurable: true });
       }
     });
@@ -104,7 +112,7 @@ describe("Health Check API Endpoints & Production Infrastructure", () => {
           "https://preview.vercel.app",
         ]);
       } finally {
-        process.env.CLIENT_URL = prevClientUrl;
+        restoreEnv("CLIENT_URL", prevClientUrl);
       }
     });
 
@@ -147,7 +155,7 @@ describe("Health Check API Endpoints & Production Infrastructure", () => {
         const servers = configureDns();
         assert.ok(Array.isArray(servers) && servers.length > 0);
       } finally {
-        process.env.DNS_SERVERS = prevDns;
+        restoreEnv("DNS_SERVERS", prevDns);
       }
     });
 
@@ -158,7 +166,7 @@ describe("Health Check API Endpoints & Production Infrastructure", () => {
         const servers = configureDns();
         assert.ok(Array.isArray(servers) && servers.length > 0);
       } finally {
-        process.env.DNS_SERVERS = prevDns;
+        restoreEnv("DNS_SERVERS", prevDns);
       }
     });
 
@@ -168,7 +176,7 @@ describe("Health Check API Endpoints & Production Infrastructure", () => {
         const custom = configureDns("8.8.8.8, 8.8.4.4");
         assert.deepStrictEqual(custom, ["8.8.8.8", "8.8.4.4"]);
       } finally {
-        process.env.DNS_SERVERS = prevDns;
+        restoreEnv("DNS_SERVERS", prevDns);
       }
     });
 
@@ -184,7 +192,7 @@ describe("Health Check API Endpoints & Production Infrastructure", () => {
           }
         );
       } finally {
-        process.env.DNS_SERVERS = prevDns;
+        restoreEnv("DNS_SERVERS", prevDns);
       }
     });
   });
